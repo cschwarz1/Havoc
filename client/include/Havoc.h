@@ -3,6 +3,7 @@
 
 #include <Common.h>
 #include <Events.h>
+#include <QSplashScreen>
 
 class HcMainWindow;
 
@@ -88,7 +89,6 @@ private:
     HcWorker<HcEventWorker>     Events;
     HcWorker<HcHeartbeatWorker> Heartbeat;
     HcWorker<HcMetaWorker>      MetaWorker;
-    HcWorker<HcMetaWorker>      PluginWorker;
 
     std::vector<json>          listeners = {};
     std::vector<NamedObject>   protocols = {};
@@ -97,12 +97,12 @@ private:
     std::vector<NamedObject>   callbacks = {};
     std::vector<ActionObject*> actions   = {};
 
-    QDir client_dir    = {};
-
+    QDir client_dir = {};
 public:
-    HcMainWindow* Gui    = nullptr;
-    toml_t        Config = {};
-    HcTheme       Theme;
+    HcMainWindow*  Gui    = {};
+    QSplashScreen* splash = {};
+    toml_t         Config = {};
+    HcTheme        Theme;
 
     HcPyEngine* PyEngine;
 
@@ -234,12 +234,21 @@ public:
     // Server Api
     //
 
-    /* send request to api endpoint */
     auto ApiSend(
         const std::string& endpoint,
         const json&        body,
         const bool         keep_alive = false
     ) const -> httplib::Result;
+
+    auto ServerPullPlugins(
+        void
+    ) -> void;
+
+    auto ServerPullResource(
+        const std::string& name,
+        const std::string& version,
+        const std::string& resource
+    ) -> bool;
 
     //
     // Scripts Manager
@@ -249,12 +258,11 @@ public:
         const std::string& path
     ) const -> void;
 
-    auto metaPlugins()   -> void;
-    auto metaAgents()    -> void;
-    auto metaListeners() -> void;
+    auto ScriptConfigProcess(
+        void
+    ) -> void;
 
 Q_SIGNALS:
-    /* signals */
     auto eventHandle(
         const QByteArray& request
     ) -> void;

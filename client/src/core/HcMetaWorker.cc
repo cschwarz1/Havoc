@@ -8,10 +8,7 @@
 //       and after the pulling has been done
 //
 
-HcMetaWorker::HcMetaWorker(
-    bool plugin_worker
-) : m_plugin( plugin_worker ) {};
-
+HcMetaWorker::HcMetaWorker()  = default;
 HcMetaWorker::~HcMetaWorker() = default;
 
 void HcMetaWorker::run() {
@@ -19,13 +16,8 @@ void HcMetaWorker::run() {
     // process all the plugins, listeners,
     // agents, operator connections, etc.
     //
-
-    if ( m_plugin ) {
-        plugins();
-    } else {
-        listeners();
-        agents();
-    }
+    listeners();
+    agents();
 
     emit Finished();
 
@@ -37,6 +29,8 @@ auto HcMetaWorker::listeners(
 ) -> void {
     auto result    = httplib::Result();
     auto listeners = json();
+
+    Havoc->splash->showMessage( "pulling active listeners", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
 
     result = Havoc->ApiSend( "/api/listener/list", {} );
 
@@ -87,6 +81,8 @@ auto HcMetaWorker::agents(
     auto result = httplib::Result();
     auto agents = json();
     auto uuid   = std::string();
+
+    Havoc->splash->showMessage( "pulling agent sessions", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
 
     result = Havoc->ApiSend( "/api/agent/list", {} );
 
@@ -148,79 +144,6 @@ auto HcMetaWorker::agents(
     }
 }
 
-auto HcMetaWorker::plugins(
-    void
-) -> void {
-    auto result  = httplib::Result();
-    auto plugins = json();
-    auto uuid    = std::string();
-    auto name    = std::string();
-    auto version = std::string();
-
-    result = Havoc->ApiSend( "/api/plugin/list", {} );
-
-    if ( result->status != 200 ) {
-        Helper::MessageBox(
-            QMessageBox::Critical,
-            "plugin processing failure",
-            "failed to pull all registered plugins"
-        );
-        return;
-    }
-
-    try {
-        if ( ( plugins = json::parse( result->body ) ).is_discarded() ) {
-            spdlog::debug( "plugin processing json response has been discarded" );
-            return;
-        }
-    } catch ( std::exception& e ) {
-        spdlog::error( "failed to parse plugin processing json response: \n{}", e.what() );
-        return;
-    }
-
-    if ( plugins.empty() ) {
-        spdlog::debug( "no plugins to process" );
-        return;
-    }
-
-    if ( ! plugins.is_array() ) {
-        spdlog::error( "plugins response is not an array" );
-        return;
-    }
-
-    //
-    // iterate over all available agents
-    // and pull console logs as well
-    //
-    for ( auto& plugin : plugins ) {
-        if ( ! plugin.is_object() ) {
-            spdlog::debug( "warning! plugin processing item is not an object" );
-            continue;
-        }
-
-        spdlog::debug( "processing plugin: {}", plugin.dump() );
-
-        if ( plugin.contains( "resources" ) && plugin[ "resources" ].is_array() ) {
-            //
-            // we just really assume that they
-            // are contained inside the json object
-            //
-            name    = plugin[ "name" ].get<std::string>();
-            version = plugin[ "version" ].get<std::string>();
-
-            spdlog::debug( "{} ({}):", name, version );
-            for ( const auto& res : plugin[ "resources" ].get<std::vector<std::string>>() ) {
-                spdlog::debug( " - {}", res );
-
-                if ( ! resource( name, version, res ) ) {
-                    spdlog::debug( "failed to pull resources for plugin: {}", name );
-                    break;
-                }
-            }
-        }
-    }
-}
-
 auto HcMetaWorker::console(
     const std::string& uuid
 ) -> void {
@@ -266,57 +189,4 @@ auto HcMetaWorker::console(
 
         emit AddAgentConsole( console );
     }
-}
-
-auto HcMetaWorker::resource(
-    const std::string& name,
-    const std::string& version,
-    const std::string& resource
-) -> bool {
-    auto result       = httplib::Result();
-    auto dir_plugin   = QDir();
-    auto dir_resource = QDir();
-    auto file_info    = QFileInfo();
-
-    if ( ! ( dir_plugin = QDir( ( Havoc->directory().path().toStdString() + "/plugins/" + name + "@" + version ).c_str() ) ).exists() ) {
-        if ( ! dir_plugin.mkpath( "." ) ) {
-            spdlog::error( "failed to create plugin directory {}", dir_plugin.path().toStdString() );
-            return false;
-        }
-    }
-
-    file_info    = QFileInfo( ( dir_plugin.path().toStdString() + "/" + resource ).c_str() );
-    dir_resource = file_info.absoluteDir();
-
-    if ( ! dir_resource.exists() ) {
-        if ( ! dir_resource.mkpath( dir_resource.absolutePath() ) ) {
-            spdlog::error( "failed to create resource path: {}", dir_resource.absolutePath().toStdString() );
-            return false;
-        }
-    }
-
-    auto fil_resource = QFile( file_info.absoluteFilePath() );
-    if ( ! fil_resource.exists() ) {
-        result = Havoc->ApiSend( "/api/plugin/resource", {
-            { "name",     name     },
-            { "resource", resource },
-        } );
-
-        if ( result->status != 200 ) {
-            spdlog::debug("failed to pull plugin resource {} from {}: {}", name, resource, result->body);
-            return false;
-        }
-
-        spdlog::debug( "result->body {}", result->body.length() );
-
-        if ( fil_resource.open( QIODevice::WriteOnly ) ) {
-            fil_resource.write( result->body.c_str(), static_cast<qint64>( result->body.length() ) );
-        } else {
-            spdlog::debug( "failed to open file resource locally {}", file_info.absoluteFilePath().toStdString() );
-        }
-    } else {
-        spdlog::debug( "file resource already exists: {}", file_info.absoluteFilePath().toStdString() );
-    }
-
-    return true;
 }

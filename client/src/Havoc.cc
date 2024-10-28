@@ -96,42 +96,40 @@ auto HavocClient::Main(
     int    argc,
     char** argv
 ) -> void {
-    auto Connector = new HcConnectDialog();
-    auto Result    = httplib::Result();
-    auto Response  = json{};
-    auto Error     = std::string( "Failed to send login request: " );
+    auto connector = new HcConnectDialog();
+    auto result    = httplib::Result();
+    auto response  = json{};
+    auto error     = std::string( "Failed to send login request: " );
+    auto data      = json();
 
-    //
-    // check if we have specified the --debug/-d
-    // flag to enable debug messages and logs
-    //
     if ( argc >= 2 ) {
+        //
+        // check if we have specified the --debug/-d
+        // flag to enable debug messages and logs
+        //
         if ( ( strcmp( argv[ 1 ], "--debug" ) == 0 ) || ( strcmp( argv[ 1 ], "-d" ) == 0 ) ) {
-            /* enabled debug messages */
             spdlog::set_level( spdlog::level::debug );
         }
     }
 
-    /* get provided creds */
-    auto data = Connector->start();
-    if ( data.empty() || ! Connector->pressedConnect() ) {
+    if ( ( data = connector->start() ).empty() || ! connector->pressedConnect() ) {
         return;
     }
+
+    splash = new QSplashScreen( QGuiApplication::primaryScreen(), QPixmap( ":/images/splash-screen" ) );
+    splash->show();
 
     if ( ! SetupDirectory() ) {
         spdlog::error( "failed to setup configuration directory. aborting" );
         return;
     }
 
-    /* create http client */
-    auto Http = httplib::Client( "https://" + data[ "host" ].get<std::string>() + ":" + data[ "port" ].get<std::string>() );
-    Http.enable_server_certificate_verification( false );
+    auto http = httplib::Client( "https://" + data[ "host" ].get<std::string>() + ":" + data[ "port" ].get<std::string>() );
+    http.enable_server_certificate_verification( false );
 
-    /* send request */
-    Result = Http.Post( "/api/login", data.dump(), "application/json" );
-
-    if ( HttpErrorToString( Result.error() ).has_value() ) {
-        auto error = HttpErrorToString( Result.error() ).value();
+    result = http.Post( "/api/login", data.dump(), "application/json" );
+    if ( HttpErrorToString( result.error() ).has_value() ) {
+        error = HttpErrorToString( result.error() ).value();
         spdlog::error( "Failed to send login request: {}", error );
 
         Helper::MessageBox(
@@ -144,8 +142,8 @@ auto HavocClient::Main(
     }
 
     /* 401 Unauthorized: Failed to log in */
-    if ( Result->status == 401 ) {
-        if ( Result->body.empty() ) {
+    if ( result->status == 401 ) {
+        if ( result->body.empty() ) {
             Helper::MessageBox(
                 QMessageBox::Critical,
                 "Login failure",
@@ -153,62 +151,66 @@ auto HavocClient::Main(
             );
 
             return;
-        } else {
-            if ( ( data = json::parse( Result->body ) ).is_discarded() ) {
-                goto ERROR_SERVER_RESPONSE;
-            }
-
-            if ( ! data.contains( "error" ) ) {
-                goto ERROR_SERVER_RESPONSE;
-            }
-
-            if ( ! data[ "error" ].is_string() ) {
-                goto ERROR_SERVER_RESPONSE;
-            }
-
-            Helper::MessageBox(
-                QMessageBox::Critical,
-                "Login failure",
-                QString( "Failed to login: %1" ).arg( data[ "error" ].get<std::string>().c_str() ).toStdString()
-            );
-
-            return;
         }
 
-    } else if ( Result->status != 200 ) {
+        if ( ( data = json::parse( result->body ) ).is_discarded() ) {
+            goto ERROR_SERVER_RESPONSE;
+        }
+
+        if ( ! data.contains( "error" ) ) {
+            goto ERROR_SERVER_RESPONSE;
+        }
+
+        if ( ! data[ "error" ].is_string() ) {
+            goto ERROR_SERVER_RESPONSE;
+        }
+
         Helper::MessageBox(
             QMessageBox::Critical,
             "Login failure",
-            QString( "Unexpected response: Http status code %1" ).arg( Result->status ).toStdString()
+            QString( "Failed to login: %1" ).arg( data[ "error" ].get<std::string>().c_str() ).toStdString()
+        );
+
+        return;
+    }
+
+    if ( result->status != 200 ) {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Login failure",
+            QString( "Unexpected response: Http status code %1" ).arg( result->status ).toStdString()
         );
         return;
     }
 
-    spdlog::debug( "Result: {}", Result->body );
+    spdlog::debug( "result: {}", result->body );
 
-    Profile.Name = data[ "name" ].get<std::string>();
-    Profile.Host = data[ "host" ].get<std::string>();
-    Profile.Port = data[ "port" ].get<std::string>();
-    Profile.User = data[ "username" ].get<std::string>();
-    Profile.Pass = data[ "password" ].get<std::string>();
-
-    if ( Result->body.empty() ) {
+    if ( result->body.empty() ) {
         goto ERROR_SERVER_RESPONSE;
     }
 
-    if ( ( data = json::parse( Result->body ) ).is_discarded() ) {
+    Profile = {
+        .Name  = data[ "name" ].get<std::string>(),
+        .Host  = data[ "host" ].get<std::string>(),
+        .Port  = data[ "port" ].get<std::string>(),
+        .User  = data[ "username" ].get<std::string>(),
+        .Pass  = data[ "password" ].get<std::string>(),
+    };
+
+    try {
+        if ( ( data = json::parse( result->body ) ).is_discarded() ) {
+            goto ERROR_SERVER_RESPONSE;
+        }
+    } catch ( std::exception& e ) {
+        spdlog::error( "failed to parse login json response: \n{}", e.what() );
+        return;
+    }
+
+    if ( ! data.contains( "token" ) || ! data[ "token" ].is_string() ) {
         goto ERROR_SERVER_RESPONSE;
     }
 
-    if ( ! data.contains( "token" ) ) {
-        goto ERROR_SERVER_RESPONSE;
-    }
-
-    if ( ! data[ "token" ].is_string() ) {
-        goto ERROR_SERVER_RESPONSE;
-    }
-
-    Profile.Token = data[ "token" ].get<std::string>();
+    Profile.Token = data[ "token" ].get<std::string>(),
 
     Theme.setStyleSheet( StyleSheet() );
 
@@ -229,6 +231,12 @@ auto HavocClient::Main(
     //
     SetupThreads();
 
+    //
+    // pull server plugins and resources and process
+    // locally registered scripts via the configuration
+    //
+    ServerPullPlugins();
+
     return;
 
 ERROR_SERVER_RESPONSE:
@@ -248,39 +256,227 @@ auto HavocClient::ApiSend(
     const json&        body,
     const bool         keep_alive
 ) const -> httplib::Result {
-    auto Http   = httplib::Client( "https://" + Profile.Host + ":" + Profile.Port );
-    auto Result = httplib::Result();
-    auto Error  = std::string( "Failed to send api request: " );
+    auto http   = httplib::Client( "https://" + Profile.Host + ":" + Profile.Port );
+    auto result = httplib::Result();
+    auto error  = std::string( "Failed to send api request: " );
 
     //
     // only way to keep the connection alive even while we have
     // "keep-alive" enabled it will shut down after 5 seconds
     //
     if ( keep_alive ) {
-        Http.set_read_timeout( INT32_MAX );
-        Http.set_connection_timeout( INT32_MAX );
-        Http.set_write_timeout( INT32_MAX );
+        http.set_read_timeout( INT32_MAX );
+        http.set_connection_timeout( INT32_MAX );
+        http.set_write_timeout( INT32_MAX );
     }
 
     //
     // configure the client
     //
-    Http.set_keep_alive( keep_alive );
-    Http.enable_server_certificate_verification( false );
-    Http.set_default_headers( {
+    http.set_keep_alive( keep_alive );
+    http.enable_server_certificate_verification( false );
+    http.set_default_headers( {
         { "x-havoc-token", Havoc->Profile.Token }
     } );
 
     //
     // send the request to our endpoint
     //
-    Result = Http.Post( endpoint, body.dump(), "application/json" );
+    result = http.Post( endpoint, body.dump(), "application/json" );
 
-    if ( HttpErrorToString( Result.error() ).has_value() ) {
-        spdlog::error( "Failed to send login request: {}", HttpErrorToString( Result.error() ).value() );
+    if ( HttpErrorToString( result.error() ).has_value() ) {
+        spdlog::error( "Failed to send login request: {}", HttpErrorToString( result.error() ).value() );
     }
 
-    return Result;
+    return result;
+}
+
+auto HavocClient::ServerPullPlugins(
+    void
+) -> void {
+    auto result    = httplib::Result();
+    auto plugins   = json();
+    auto uuid      = std::string();
+    auto name      = std::string();
+    auto version   = std::string();
+    auto resources = std::vector<std::string>();
+    auto message   = std::string();
+    auto box       = QMessageBox();
+    auto details   = std::string();
+
+    splash->showMessage( "pulling plugins information", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
+
+    result = ApiSend( "/api/plugin/list", {} );
+    if ( result->status != 200 ) {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "plugin processing failure",
+            "failed to pull all registered plugins"
+        );
+        return;
+    }
+
+    try {
+        if ( ( plugins = json::parse( result->body ) ).is_discarded() ) {
+            spdlog::debug( "plugin processing json response has been discarded" );
+            return;
+        }
+    } catch ( std::exception& e ) {
+        spdlog::error( "failed to parse plugin processing json response: \n{}", e.what() );
+        return;
+    }
+
+    if ( plugins.empty() ) {
+        spdlog::debug( "no plugins to process" );
+        return;
+    }
+
+    if ( ! plugins.is_array() ) {
+        spdlog::error( "plugins response is not an array" );
+        return;
+    }
+
+    //
+    // iterate over all available agents
+    // and pull console logs as well
+    //
+    for ( auto& plugin : plugins ) {
+        if ( ! plugin.is_object() ) {
+            spdlog::debug( "warning! plugin processing item is not an object" );
+            continue;
+        }
+
+        spdlog::debug( "processing plugin: {}", plugin.dump() );
+
+        //
+        // we just really assume that they
+        // are contained inside the json object
+        //
+        name      = plugin[ "name"      ].get<std::string>();
+        version   = plugin[ "version"   ].get<std::string>();
+        resources = plugin[ "resources" ].get<std::vector<std::string>>();
+
+        //
+        // check if the plugin directory exists, if not then
+        // pull the plugin resources from the remote server
+        //
+        if ( QDir( std::format( "{}/plugins/{}@{}", directory().path().toStdString(), name, version ).c_str() ).exists() ) {
+            //
+            // if the directory exists then it means we have pulled the
+            // resources already so we are going to skip to the next plugin
+            //
+            continue;
+        }
+
+        Havoc->splash->showMessage( std::format( "processing plugin {} ({})", name, version ).c_str(), Qt::AlignLeft | Qt::AlignBottom, Qt::white );
+
+        if ( plugin.contains( "resources" ) && plugin[ "resources" ].is_array() ) {
+            message = std::format( "A plugin will be installed from the remote server: {} ({})\n", name, version );
+            details = "resources to be downloaded locally:\n";
+
+            for ( const auto& res : resources ) {
+                details += std::format( " - {}\n", res );
+            }
+
+            box.setStyleSheet( StyleSheet() );
+            box.setWindowTitle( "Plugin install" );
+            box.setText( message.c_str() );
+            box.setIcon( QMessageBox::Warning );
+            box.setDetailedText( details.c_str() );
+            box.setStandardButtons( QMessageBox::Ok | QMessageBox::Cancel );
+            box.setDefaultButton( QMessageBox::Ok );
+
+            if ( box.exec() == QMessageBox::Ok ) {
+                spdlog::debug( "{} ({}):", name, version );
+                for ( const auto& res : plugin[ "resources" ].get<std::vector<std::string>>() ) {
+                    spdlog::debug( " - {}", res );
+
+                    splash->showMessage(
+                        std::format( "pulling plugin {} ({}): {}", name, version, res ).c_str(),
+                        Qt::AlignLeft | Qt::AlignBottom,
+                        Qt::white
+                    );
+
+                    if ( ! ServerPullResource( name, version, res ) ) {
+                        spdlog::debug( "failed to pull resources for plugin: {}", name );
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    splash->showMessage( "process plugins and store", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
+
+    //
+    // start the plugin worker of the store to load up all the
+    // plugins from the local file system that we just pulled
+    //
+    Gui->PageScripts->processPlugins();
+
+    splash->showMessage( "process scripts", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
+
+    //
+    // load all scripts from the configuration
+    //
+    ScriptConfigProcess();
+
+    //
+    // now start up the meta worker to
+    // pull the listeners and agent sessions
+    //
+    MetaWorker.Thread->start();
+}
+
+auto HavocClient::ServerPullResource(
+    const std::string& name,
+    const std::string& version,
+    const std::string& resource
+) -> bool {
+    auto result       = httplib::Result();
+    auto dir_plugin   = QDir();
+    auto dir_resource = QDir();
+    auto file_info    = QFileInfo();
+
+    if ( ! ( dir_plugin = QDir( std::format( "{}/plugins/{}@{}", directory().path().toStdString(), name, version ).c_str() ) ).exists() ) {
+        if ( ! dir_plugin.mkpath( "." ) ) {
+            spdlog::error( "failed to create plugin directory {}", dir_plugin.path().toStdString() );
+            return false;
+        }
+    }
+
+    file_info    = QFileInfo( ( dir_plugin.path().toStdString() + "/" + resource ).c_str() );
+    dir_resource = file_info.absoluteDir();
+
+    if ( ! dir_resource.exists() ) {
+        if ( ! dir_resource.mkpath( dir_resource.absolutePath() ) ) {
+            spdlog::error( "failed to create resource path: {}", dir_resource.absolutePath().toStdString() );
+            return false;
+        }
+    }
+
+    auto fil_resource = QFile( file_info.absoluteFilePath() );
+    if ( ! fil_resource.exists() ) {
+        result = Havoc->ApiSend( "/api/plugin/resource", {
+            { "name",     name     },
+            { "resource", resource },
+        } );
+
+        if ( result->status != 200 ) {
+            spdlog::debug("failed to pull plugin resource {} from {}: {}", name, resource, result->body);
+            return false;
+        }
+
+        if ( fil_resource.open( QIODevice::WriteOnly ) ) {
+            fil_resource.write( result->body.c_str(), static_cast<qint64>( result->body.length() ) );
+        } else {
+            spdlog::debug( "failed to open file resource locally {}", file_info.absoluteFilePath().toStdString() );
+        }
+    } else {
+        spdlog::debug( "file resource already exists: {}", file_info.absoluteFilePath().toStdString() );
+    }
+
+    return true;
 }
 
 auto HavocClient::eventClosed() -> void {
@@ -397,6 +593,7 @@ auto HavocClient::SetupThreads() -> void {
         // pulling all the listeners, agents, etc. from the server
         //
         spdlog::info( "MetaWorker finished" );
+        splash->close();
         Gui->renderWindow();
         Events.Thread->start();
     } );
@@ -404,9 +601,9 @@ auto HavocClient::SetupThreads() -> void {
     //
     // connect methods to add listeners, agents, etc. to the user interface (ui)
     //
-    connect( MetaWorker.Worker, &HcMetaWorker::AddListener,     Gui, &HcMainWindow::AddListener  );
-    connect( MetaWorker.Worker, &HcMetaWorker::AddAgent,        Gui, &HcMainWindow::AddAgent     );
-    connect( MetaWorker.Worker, &HcMetaWorker::AddAgentConsole, Gui, &HcMainWindow::AgentConsole );
+    connect( MetaWorker.Worker, &HcMetaWorker::AddListener,          Gui, &HcMainWindow::AddListener  );
+    connect( MetaWorker.Worker, &HcMetaWorker::AddAgent,             Gui, &HcMainWindow::AddAgent     );
+    connect( MetaWorker.Worker, &HcMetaWorker::AddAgentConsole,      Gui, &HcMainWindow::AgentConsole );
 
     //
     // HcMetaWorker thread
@@ -414,46 +611,48 @@ auto HavocClient::SetupThreads() -> void {
     // start the plugin worker to pull and register
     // client plugin scripts to the local file system
     //
-    PluginWorker.Thread = new QThread;
-    PluginWorker.Worker = new HcMetaWorker( true );
-    PluginWorker.Worker->moveToThread( PluginWorker.Thread );
-
-    connect( PluginWorker.Thread, &QThread::started,  PluginWorker.Worker, &HcMetaWorker::run );
-    connect( PluginWorker.Worker, &HcMetaWorker::Finished, this, [&]() {
-        spdlog::debug( "PluginWorker finished" );
-
-        //
-        // start the plugin worker of the store to load up all the
-        // plugins from the local file system that we just pulled
-        //
-        Gui->PageScripts->processPlugins();
-
-        //
-        // load the registered scripts
-        //
-        if ( Config.contains( "scripts" ) && Config.at( "scripts" ).is_table() ) {
-            auto scripts_tbl = Config.at( "scripts" ).as_table();
-
-            if ( scripts_tbl.contains( "files" ) && scripts_tbl.at( "files" ).is_array() ) {
-                for ( const auto& file : scripts_tbl.at( "files" ).as_array() ) {
-                    if ( ! file.is_string() ) {
-                        spdlog::error( "configuration scripts file value is not an string" );
-                        continue;
-                    }
-
-                    ScriptLoad( file.as_string() );
-                }
-            }
-        }
-
-        //
-        // now start up the meta worker to
-        // pull the listeners and agent sessions
-        //
-        MetaWorker.Thread->start();
-    });
-
-    PluginWorker.Thread->start();
+    // PluginWorker.Thread = new QThread;
+    // PluginWorker.Worker = new HcMetaWorker( true );
+    // PluginWorker.Worker->moveToThread( PluginWorker.Thread );
+    //
+    // connect( PluginWorker.Thread, &QThread::started,  PluginWorker.Worker, &HcMetaWorker::run );
+    // connect( PluginWorker.Worker, &HcMetaWorker::Finished, this, [&]() {
+    //     spdlog::debug( "PluginWorker finished" );
+    //
+    //     splash->showMessage( "process plugins", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
+    //
+    //     //
+    //     // start the plugin worker of the store to load up all the
+    //     // plugins from the local file system that we just pulled
+    //     //
+    //     Gui->PageScripts->processPlugins();
+    //
+    //     //
+    //     // load the registered scripts
+    //     //
+    //     if ( Config.contains( "scripts" ) && Config.at( "scripts" ).is_table() ) {
+    //         auto scripts_tbl = Config.at( "scripts" ).as_table();
+    //
+    //         if ( scripts_tbl.contains( "files" ) && scripts_tbl.at( "files" ).is_array() ) {
+    //             for ( const auto& file : scripts_tbl.at( "files" ).as_array() ) {
+    //                 if ( ! file.is_string() ) {
+    //                     spdlog::error( "configuration scripts file value is not an string" );
+    //                     continue;
+    //                 }
+    //
+    //                 ScriptLoad( file.as_string() );
+    //             }
+    //         }
+    //     }
+    //
+    //     //
+    //     // now start up the meta worker to
+    //     // pull the listeners and agent sessions
+    //     //
+    //     MetaWorker.Thread->start();
+    // });
+    //
+    // PluginWorker.Thread->start();
 }
 
 auto HavocClient::AddBuilder(
@@ -709,6 +908,28 @@ auto HavocClient::ScriptLoad(
     const std::string& path
 ) const -> void {
     Gui->PageScripts->LoadScript( path );
+}
+
+auto HavocClient::ScriptConfigProcess(
+    void
+) -> void {
+    //
+    // load the registered scripts
+    //
+    if ( Config.contains( "scripts" ) && Config.at( "scripts" ).is_table() ) {
+        auto scripts_tbl = Config.at( "scripts" ).as_table();
+
+        if ( scripts_tbl.contains( "files" ) && scripts_tbl.at( "files" ).is_array() ) {
+            for ( const auto& file : scripts_tbl.at( "files" ).as_array() ) {
+                if ( ! file.is_string() ) {
+                    spdlog::error( "configuration scripts file value is not an string" );
+                    continue;
+                }
+
+                ScriptLoad( file.as_string() );
+            }
+        }
+    }
 }
 
 HavocClient::ActionObject::ActionObject() {}

@@ -264,8 +264,6 @@ auto HcPagePlugins::processPlugins(
             plugins.mkpath( "." );
         }
     }
-
-    spdlog::debug( "" );
 }
 
 HcPyConsole::HcPyConsole(
