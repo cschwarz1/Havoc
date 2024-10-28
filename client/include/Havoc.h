@@ -117,7 +117,7 @@ public:
     ) -> void;
 
     /* exit application and free resources */
-    auto Exit() -> void;
+    static auto Exit() -> void;
 
     /* get server address */
     auto Server() const -> std::string;
@@ -233,6 +233,10 @@ public:
     //
     // Server Api
     //
+
+    auto ApiLogin(
+        const json& data
+    ) -> std::optional<std::string>;
 
     auto ApiSend(
         const std::string& endpoint,

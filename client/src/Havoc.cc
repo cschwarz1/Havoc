@@ -101,6 +101,7 @@ auto HavocClient::Main(
     auto response  = json{};
     auto error     = std::string( "Failed to send login request: " );
     auto data      = json();
+    auto token     = std::optional<std::string>();
 
     if ( argc >= 2 ) {
         //
@@ -116,78 +117,23 @@ auto HavocClient::Main(
         return;
     }
 
-    splash = new QSplashScreen( QGuiApplication::primaryScreen(), QPixmap( ":/images/splash-screen" ) );
-    splash->show();
-
     if ( ! SetupDirectory() ) {
         spdlog::error( "failed to setup configuration directory. aborting" );
         return;
     }
 
-    auto http = httplib::Client( "https://" + data[ "host" ].get<std::string>() + ":" + data[ "port" ].get<std::string>() );
-    http.enable_server_certificate_verification( false );
-
-    result = http.Post( "/api/login", data.dump(), "application/json" );
-    if ( HttpErrorToString( result.error() ).has_value() ) {
-        error = HttpErrorToString( result.error() ).value();
-        spdlog::error( "Failed to send login request: {}", error );
-
+    if ( ! ( token = ApiLogin( data ) ).has_value() ) {
         Helper::MessageBox(
             QMessageBox::Critical,
             "Login failure",
-            std::format( "Failed to login: {}", error )
+            "Failed to login"
         );
 
-        return;
+        return Exit();
     }
 
-    /* 401 Unauthorized: Failed to log in */
-    if ( result->status == 401 ) {
-        if ( result->body.empty() ) {
-            Helper::MessageBox(
-                QMessageBox::Critical,
-                "Login failure",
-                "Failed to login: Unauthorized"
-            );
-
-            return;
-        }
-
-        if ( ( data = json::parse( result->body ) ).is_discarded() ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-
-        if ( ! data.contains( "error" ) ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-
-        if ( ! data[ "error" ].is_string() ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-
-        Helper::MessageBox(
-            QMessageBox::Critical,
-            "Login failure",
-            QString( "Failed to login: %1" ).arg( data[ "error" ].get<std::string>().c_str() ).toStdString()
-        );
-
-        return;
-    }
-
-    if ( result->status != 200 ) {
-        Helper::MessageBox(
-            QMessageBox::Critical,
-            "Login failure",
-            QString( "Unexpected response: Http status code %1" ).arg( result->status ).toStdString()
-        );
-        return;
-    }
-
-    spdlog::debug( "result: {}", result->body );
-
-    if ( result->body.empty() ) {
-        goto ERROR_SERVER_RESPONSE;
-    }
+    splash = new QSplashScreen( QGuiApplication::primaryScreen(), QPixmap( ":/images/splash-screen" ) );
+    splash->show();
 
     Profile = {
         .Name  = data[ "name" ].get<std::string>(),
@@ -195,22 +141,8 @@ auto HavocClient::Main(
         .Port  = data[ "port" ].get<std::string>(),
         .User  = data[ "username" ].get<std::string>(),
         .Pass  = data[ "password" ].get<std::string>(),
+        .Token = token.value()
     };
-
-    try {
-        if ( ( data = json::parse( result->body ) ).is_discarded() ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-    } catch ( std::exception& e ) {
-        spdlog::error( "failed to parse login json response: \n{}", e.what() );
-        return;
-    }
-
-    if ( ! data.contains( "token" ) || ! data[ "token" ].is_string() ) {
-        goto ERROR_SERVER_RESPONSE;
-    }
-
-    Profile.Token = data[ "token" ].get<std::string>(),
 
     Theme.setStyleSheet( StyleSheet() );
 
@@ -236,19 +168,91 @@ auto HavocClient::Main(
     // locally registered scripts via the configuration
     //
     ServerPullPlugins();
-
-    return;
-
-ERROR_SERVER_RESPONSE:
-    return Helper::MessageBox(
-        QMessageBox::Critical,
-        "Login failure",
-        "Failed to login: Invalid response from the server"
-    );
 }
 
 auto HavocClient::Exit() -> void {
     QApplication::exit( 0 );
+}
+
+auto HavocClient::ApiLogin(
+    const json& data
+) -> std::optional<std::string> {
+    auto result   = httplib::Result();
+    auto http     = httplib::Client( "https://" + data[ "host" ].get<std::string>() + ":" + data[ "port" ].get<std::string>() );
+    auto error    = std::string();
+    auto response = json();
+
+    http.enable_server_certificate_verification( false );
+
+    //
+    // send request with the operator
+    // login data to the /api/login endpoint
+    //
+    result = http.Post( "/api/login", data.dump(), "application/json" );
+    if ( result.error() != httplib::Error::Success ) {
+        spdlog::error( "failed to send login request: {}", HttpErrorToString( result.error() ).value() );
+
+        return {};
+    }
+
+    //
+    // 401 Unauthorized: Failed to log in
+    //
+    if ( result->status == 401 ) {
+        if ( result->body.empty() ) {
+            spdlog::error( "failed to login: unauthorized (invalid credentials)" );
+            return {};
+        }
+
+        try {
+            if ( ( response = json::parse( result->body ) ).is_discarded() ) {
+                spdlog::error( "failed to parse login json response: json has been discarded" );
+                return {};
+            }
+        } catch ( std::exception& e ) {
+            spdlog::error( "failed to parse login json response: \n{}", e.what() );
+            return {};
+        }
+
+        if ( ! response.contains( "error" ) ) {
+            return {};
+        }
+
+        if ( ! response[ "error" ].is_string() ) {
+            return {};
+        }
+
+        spdlog::error( "failed to login: {}", response[ "error" ].get<std::string>() );
+
+        return {};
+    }
+
+    if ( result->status != 200 ) {
+        spdlog::error( "unexpected response: http status code {}", result->status );
+        return {};
+    }
+
+    spdlog::debug( "result: {}", result->body );
+
+    if ( result->body.empty() ) {
+        return {};
+    }
+
+    try {
+        if ( ( response = json::parse( result->body ) ).is_discarded() ) {
+            spdlog::error( "failed to parse login json response: json has been discarded" );
+            return {};
+        }
+    } catch ( std::exception& e ) {
+        spdlog::error( "failed to parse login json response: \n{}", e.what() );
+        return {};
+    }
+
+    if ( ! response.contains( "token" ) || ! response[ "token" ].is_string() ) {
+        return {};
+    }
+
+    return response[ "token" ].get<std::string>();
 }
 
 auto HavocClient::ApiSend(
@@ -301,8 +305,8 @@ auto HavocClient::ServerPullPlugins(
     auto version   = std::string();
     auto resources = std::vector<std::string>();
     auto message   = std::string();
-    auto box       = QMessageBox();
     auto details   = std::string();
+    auto box       = QMessageBox();
 
     splash->showMessage( "pulling plugins information", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
 
@@ -370,38 +374,42 @@ auto HavocClient::ServerPullPlugins(
 
         Havoc->splash->showMessage( std::format( "processing plugin {} ({})", name, version ).c_str(), Qt::AlignLeft | Qt::AlignBottom, Qt::white );
 
-        if ( plugin.contains( "resources" ) && plugin[ "resources" ].is_array() ) {
-            message = std::format( "A plugin will be installed from the remote server: {} ({})\n", name, version );
-            details = "resources to be downloaded locally:\n";
+        if ( ( ! plugin.contains( "resources" ) ) && ( ! plugin[ "resources" ].is_array() ) ) {
+            continue;
+        }
 
-            for ( const auto& res : resources ) {
-                details += std::format( " - {}\n", res );
-            }
+        message = std::format( "A plugin will be installed from the remote server: {} ({})\n", name, version );
+        details = "resources to be downloaded locally:\n";
 
-            box.setStyleSheet( StyleSheet() );
-            box.setWindowTitle( "Plugin install" );
-            box.setText( message.c_str() );
-            box.setIcon( QMessageBox::Warning );
-            box.setDetailedText( details.c_str() );
-            box.setStandardButtons( QMessageBox::Ok | QMessageBox::Cancel );
-            box.setDefaultButton( QMessageBox::Ok );
+        for ( const auto& res : resources ) {
+            details += std::format( " - {}\n", res );
+        }
 
-            if ( box.exec() == QMessageBox::Ok ) {
-                spdlog::debug( "{} ({}):", name, version );
-                for ( const auto& res : plugin[ "resources" ].get<std::vector<std::string>>() ) {
-                    spdlog::debug( " - {}", res );
+        box.setStyleSheet( StyleSheet() );
+        box.setWindowTitle( "Plugin install" );
+        box.setText( message.c_str() );
+        box.setIcon( QMessageBox::Warning );
+        box.setDetailedText( details.c_str() );
+        box.setStandardButtons( QMessageBox::Ok | QMessageBox::Cancel );
+        box.setDefaultButton( QMessageBox::Ok );
 
-                    splash->showMessage(
-                        std::format( "pulling plugin {} ({}): {}", name, version, res ).c_str(),
-                        Qt::AlignLeft | Qt::AlignBottom,
-                        Qt::white
-                    );
+        if ( box.exec() == QMessageBox::Cancel ) {
+            continue;
+        }
 
-                    if ( ! ServerPullResource( name, version, res ) ) {
-                        spdlog::debug( "failed to pull resources for plugin: {}", name );
-                        break;
-                    }
-                }
+        spdlog::debug( "{} ({}):", name, version );
+        for ( const auto& res : plugin[ "resources" ].get<std::vector<std::string>>() ) {
+            spdlog::debug( " - {}", res );
+
+            splash->showMessage(
+                std::format( "pulling plugin {} ({}): {}", name, version, res ).c_str(),
+                Qt::AlignLeft | Qt::AlignBottom,
+                Qt::white
+            );
+
+            if ( ! ServerPullResource( name, version, res ) ) {
+                spdlog::debug( "failed to pull resources for plugin: {}", name );
+                break;
             }
         }
     }
