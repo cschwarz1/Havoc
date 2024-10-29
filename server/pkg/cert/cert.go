@@ -310,7 +310,7 @@ func HTTPSGenerateRSACertificate(host string) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 	subject := randomSubject(host)
-	cert, key := generateCertificate(HTTPSCA, (*subject), true, false, privateKey)
+	cert, key := generateCertificate(HTTPSCA, *subject, true, false, privateKey)
 	// err = saveCertificate(HTTPSCA, RSAKey, host, cert, key)
 	return cert, key, err
 }

@@ -6,14 +6,16 @@ import (
 	"Havoc/pkg/colors"
 	"Havoc/pkg/logger"
 	"Havoc/pkg/utils"
-	"errors"
-	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
-
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"io"
 	"net/http"
 	"os"
@@ -100,13 +102,46 @@ func NewServerApi(havoc pkg.IHavocCore) (*ServerApi, error) {
 // Start the server api
 // generates an HTTP certificate and then starts the api server
 func (api *ServerApi) Start(host, port string) {
-	var err error
+	var (
+		err  error
+		file []byte
+		ssl  *x509.Certificate
+		hash [32]byte
+	)
 
-	logger.Info("starting server on %v", colors.BlueUnderline("https://"+host+":"+port))
+	// read the ssl sha256 hash fingerprint to present it to
+	// the server console so the operator can validate the
+	// connection being secure between the server and client
 
-	// start the api server
+	// read the specified ssl certificate into a buffer
+	if file, err = os.ReadFile(api.ssl.cert); err != nil {
+		logger.Error("ssl cert read error: %v", err)
+		return
+	}
+
+	// decode the PEM block containing the certificate
+	block, _ := pem.Decode(file)
+	if block == nil || block.Type != "CERTIFICATE" {
+		logger.Error("failed to parse certificate: couldn't decode PEM block containing the certificate")
+		return
+	}
+
+	// parse the ssl certificate
+	if ssl, err = x509.ParseCertificate(block.Bytes); err != nil {
+		logger.Error("failed to parse certificate: %v", err)
+		return
+	}
+
+	// compute the SHA-256 hash of the certificate's raw bytes
+	// and then log it into the console
+	hash = sha256.Sum256(ssl.Raw)
+	logger.Info("ssl fingerprint: %v", colors.BoldGreen(hex.EncodeToString(hash[:])))
+
+	// now start the api server so clients can connect
+	// and interact with the agents, listeners, etc.
+	logger.Info("serving server on %v", colors.BlueUnderline("https://"+host+":"+port))
 	if err = api.engine.RunTLS(host+":"+port, api.ssl.cert, api.ssl.key); err != nil {
-		logger.Error("Failed to start webserver: " + err.Error())
+		logger.Error("failed to start webserver: " + err.Error())
 		return
 	}
 }
@@ -127,16 +162,20 @@ func (api *ServerApi) GenerateSSL(host, certsPath string) (string, string, error
 		os.Exit(0)
 	}
 
-	// write cert file to disk
-	err = os.WriteFile(certPath, Cert, 0644)
-	if err != nil {
-		return "", "", errors.New("couldn't save server cert file: " + err.Error())
+	if _, err = os.Stat(certPath); os.IsNotExist(err) {
+		// write cert file to disk
+		err = os.WriteFile(certPath, Cert, 0644)
+		if err != nil {
+			return "", "", errors.New("couldn't save server cert file: " + err.Error())
+		}
 	}
 
-	// write the cert key path to disk
-	err = os.WriteFile(keyPath, Key, 0644)
-	if err != nil {
-		return "", "", errors.New("couldn't save server cert file: " + err.Error())
+	if _, err = os.Stat(keyPath); os.IsNotExist(err) {
+		// write the cert key path to disk
+		err = os.WriteFile(keyPath, Key, 0644)
+		if err != nil {
+			return "", "", errors.New("couldn't save server cert file: " + err.Error())
+		}
 	}
 
 	return certPath, keyPath, nil
