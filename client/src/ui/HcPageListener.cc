@@ -565,9 +565,15 @@ auto HcListener::stop() -> std::optional<std::string>
             goto ERROR_SERVER_RESPONSE;
         }
 
-        if ( ( data = json::parse( response ) ).is_discarded() ) {
+        try {
+            if ( ( data = json::parse( response ) ).is_discarded() ) {
+                spdlog::error( "failed to parse json object: json has been discarded" );
+                goto ERROR_SERVER_RESPONSE;
+            };
+        } catch ( std::exception& e ) {
+            spdlog::error( "exception raised while parsing json object: {}", e.what() );
             goto ERROR_SERVER_RESPONSE;
-        }
+        };
 
         if ( ! data.contains( "error" ) ) {
             goto ERROR_SERVER_RESPONSE;
@@ -601,9 +607,15 @@ auto HcListener::start() -> std::optional<std::string>
             goto ERROR_SERVER_RESPONSE;
         }
 
-        if ( ( data = json::parse( response ) ).is_discarded() ) {
+        try {
+            if ( ( data = json::parse( response ) ).is_discarded() ) {
+                spdlog::error( "failed to parse json object: json has been discarded" );
+                goto ERROR_SERVER_RESPONSE;
+            };
+        } catch ( std::exception& e ) {
+            spdlog::error( "exception raised while parsing json object: {}", e.what() );
             goto ERROR_SERVER_RESPONSE;
-        }
+        };
 
         if ( ! data.contains( "error" ) ) {
             goto ERROR_SERVER_RESPONSE;
@@ -636,9 +648,15 @@ auto HcListener::restart() -> std::optional<std::string>
             goto ERROR_SERVER_RESPONSE;
         }
 
-        if ( ( data = json::parse( response ) ).is_discarded() ) {
+        try {
+            if ( ( data = json::parse( response ) ).is_discarded() ) {
+                spdlog::error( "failed to parse json object: json has been discarded" );
+                goto ERROR_SERVER_RESPONSE;
+            };
+        } catch ( std::exception& e ) {
+            spdlog::error( "exception raised while parsing json object: {}", e.what() );
             goto ERROR_SERVER_RESPONSE;
-        }
+        };
 
         if ( ! data.contains( "error" ) ) {
             goto ERROR_SERVER_RESPONSE;
@@ -736,9 +754,15 @@ auto HcListener::remove() -> std::optional<std::string>
             goto ERROR_SERVER_RESPONSE;
         }
 
-        if ( ( data = json::parse( response ) ).is_discarded() ) {
+        try {
+            if ( ( data = json::parse( response ) ).is_discarded() ) {
+                spdlog::error( "failed to parse json object: json has been discarded" );
+                goto ERROR_SERVER_RESPONSE;
+            };
+        } catch ( std::exception& e ) {
+            spdlog::error( "exception raised while parsing json object: {}", e.what() );
             goto ERROR_SERVER_RESPONSE;
-        }
+        };
 
         if ( ! data.contains( "error" ) ) {
             goto ERROR_SERVER_RESPONSE;

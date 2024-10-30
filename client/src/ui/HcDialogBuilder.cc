@@ -238,9 +238,15 @@ auto HcDialogBuilder::PressedGenerate(
         auto [status_code, response] = Havoc->ApiSend( "/api/agent/build", data );
 
         if ( status_code != 200 ) {
-            if ( ( data = json::parse( response ) ).is_discarded() ) {
+            try {
+                if ( ( data = json::parse( response ) ).is_discarded() ) {
+                    spdlog::error( "failed to parse json object: json has been discarded" );
+                    goto ERROR_SERVER_RESPONSE;
+                };
+            } catch ( std::exception& e ) {
+                spdlog::error( "exception raised while parsing json object: {}", e.what() );
                 goto ERROR_SERVER_RESPONSE;
-            }
+            };
 
             if ( ! data.contains( "error" ) ) {
                 goto ERROR_SERVER_RESPONSE;
@@ -262,9 +268,15 @@ auto HcDialogBuilder::PressedGenerate(
             auto payload = QByteArray();
             auto context = json();
 
-            if ( ( data = json::parse( response ) ).is_discarded() ) {
+            try {
+                if ( ( data = json::parse( response ) ).is_discarded() ) {
+                    spdlog::error( "failed to parse json object: json has been discarded" );
+                    goto ERROR_SERVER_RESPONSE;
+                };
+            } catch ( std::exception& e ) {
+                spdlog::error( "exception raised while parsing json object: {}", e.what() );
                 goto ERROR_SERVER_RESPONSE;
-            }
+            };
 
             //
             // get the file name of the generated implant

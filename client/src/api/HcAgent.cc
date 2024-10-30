@@ -205,8 +205,13 @@ auto HcAgentExecute(
         // check for emtpy request
         //
         if ( ! response.empty() ) {
-            if ( ( object = json::parse( response ) ).is_discarded() ) {
-                object[ "error" ] = "failed to parse response";
+            try {
+                if ( ( object = json::parse( response ) ).is_discarded() ) {
+                    return { "error", "json object response has been discarded" };
+                };
+            } catch ( std::exception& e ) {
+                spdlog::error( "failed to parse json object: \n{}", e.what() );
+                return { "error", e.what() };
             };
 
             if ( object[ "error" ].is_string() ) {
@@ -225,7 +230,13 @@ auto HcAgentExecute(
     // check for emtpy request
     //
     if ( ! response.empty() ) {
-        if ( ( object = json::parse( response ) ).is_discarded() ) {
+        try {
+            if ( ( object = json::parse( response ) ).is_discarded() ) {
+                spdlog::error( "failed to parse json object: json has been discarded" );
+                object[ "error" ] = "failed to parse response";
+            };
+        } catch ( std::exception& e ) {
+            spdlog::error( "exception raised while parsing json object: {}", e.what() );
             object[ "error" ] = "failed to parse response";
         };
     };

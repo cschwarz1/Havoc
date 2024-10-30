@@ -226,7 +226,7 @@ auto HavocClient::ApiSend(
     const json&        body,
     const bool         keep_alive
 ) -> std::tuple<int, std::string> {
-    auto [status_code, response, ssl_hash] = RequestSend(
+    auto [status, response, ssl_hash] = RequestSend(
         std::format( "https://{}:{}/{}", Havoc->Profile.Host, Havoc->Profile.Port, endpoint ),
         body.dump(),
         keep_alive,
@@ -248,7 +248,7 @@ auto HavocClient::ApiSend(
         return {};
     }
 
-    return { status_code, response.value() };
+    return { status, response.value() };
 }
 
 auto HavocClient::ServerPullPlugins(
