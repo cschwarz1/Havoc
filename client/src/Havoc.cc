@@ -1,4 +1,5 @@
 #include <Havoc.h>
+#include <vector>
 
 HavocClient::HavocClient() {
     /* initialize logger */
@@ -39,10 +40,13 @@ auto HavocClient::Main(
     char** argv
 ) -> void {
     auto connector  = new HcConnectDialog();
-    auto response   = json{};
-    auto error      = std::string( "Failed to send login request: " );
+    auto response   = json();
     auto data       = json();
+    auto error      = std::string( "Failed to send login request: " );
     auto stylesheet = StyleSheet();
+    auto found      = false;
+    auto conn_entry = toml::value();
+    auto ssl_box    = QMessageBox();
 
     if ( argc >= 2 ) {
         //
@@ -54,14 +58,31 @@ auto HavocClient::Main(
         }
     }
 
-    if ( ( data = connector->start() ).empty() || ! connector->connected() ) {
-        return;
-    }
+    //
+    // setup directory and load up all profile connections for
+    // the connection dialog to connect to already saved connections
+    //
 
     if ( ! SetupDirectory() ) {
         spdlog::error( "failed to setup configuration directory. aborting" );
         return;
     }
+
+    ProfileSync();
+
+    //
+    // display the operator with the connection
+    // dialog and saved profile connections and
+    // save the connection details in the profile
+    //
+
+    if ( ( data = connector->start() ).empty() || ( ! connector->connected() ) ) {
+        return;
+    }
+
+    //
+    // login into the team server api
+    //
 
     auto [token, ssl_hash] = ApiLogin( data );
     if ( ( ! token.has_value() ) || ( ! ssl_hash.has_value() ) ) {
@@ -74,18 +95,98 @@ auto HavocClient::Main(
         return Exit();
     }
 
+    //
+    // save the successful credentials into
+    // the profile on disk with the ssl hash
+    //
+
+    session = {
+        .name     = data[ "name" ].get<std::string>(),
+        .host     = data[ "host" ].get<std::string>(),
+        .port     = data[ "port" ].get<std::string>(),
+        .user     = data[ "username" ].get<std::string>(),
+        .pass     = data[ "password" ].get<std::string>(),
+        .token    = token.value(),
+        .ssl_hash = ssl_hash.value(),
+    };
+
+    for ( const auto& connection : ProfileQuery( "connection" ) ) {
+        if ( toml::find<std::string>( connection, "name" ) == session.name ) {
+            found      = true;
+            conn_entry = connection;
+            break;
+        }
+    }
+
+    ssl_box.setStyleSheet( StyleSheet() );
+
+    if ( ! found ) {
+        if ( ! ssl_hash.value().empty() ) {
+            ssl_box.setWindowTitle( "Verify SSL Fingerprint" );
+            ssl_box.setText( std::format(
+                "The team server's SSL fingerprint is: \n\n{}\n\nDoes this match the fingerprint presented in the server console?",
+                ssl_hash.value()
+            ).c_str() );
+            ssl_box.setIcon( QMessageBox::Warning );
+            ssl_box.setStandardButtons( QMessageBox::Yes | QMessageBox::No );
+            ssl_box.setDefaultButton( QMessageBox::Yes );
+
+            if ( ssl_box.exec() == QMessageBox::No ) {
+                return;
+            }
+        }
+
+        ProfileInsert( "connection", toml::table {
+           { "name",     session.name     },
+           { "host",     session.host     },
+           { "port",     session.port     },
+           { "username", session.user     },
+           { "password", session.pass     },
+           { "ssl-hash", session.ssl_hash },
+        } );
+    } else {
+        //
+        // if we have found an entry then lets compare
+        // the ssl hash to the profile to verify that
+        // it's still the same as previously
+        //
+        if ( conn_entry.contains( "ssl-hash" ) ) {
+            if ( toml::find<std::string>( conn_entry, "ssl-hash" ) != ssl_hash.value() ) {
+                ssl_box.setIcon( QMessageBox::Critical );
+                ssl_box.setWindowTitle( "SSL Fingerprint" );
+                ssl_box.setText( std::format(
+                    "SSL fingerprint verification failure \n\n{}\n\nwas expected from previous profile connection but received\n\n{}",
+                    toml::find<std::string>( conn_entry, "ssl-hash" ),
+                    ssl_hash.value()
+                ).c_str() );
+                ssl_box.setStandardButtons( QMessageBox::Ok );
+                ssl_box.exec();
+
+                return;
+            }
+        } else {
+            //
+            // the profile connection seems incorrect or invalid... abort
+            //
+            ssl_box.setIcon( QMessageBox::Critical );
+            ssl_box.setWindowTitle( "SSL Fingerprint" );
+            ssl_box.setText(
+                "SSL fingerprint verification failure \n\ncouldn't resolve and validate ssl fingerprint hash from previous connection"
+            );
+            ssl_box.setStandardButtons( QMessageBox::Ok );
+            ssl_box.exec();
+
+            return;
+        }
+    }
+
+    //
+    // continue with the splash
+    // screen and starting up the Ui
+    //
+
     splash = new QSplashScreen( QGuiApplication::primaryScreen(), QPixmap( ":/images/splash-screen" ) );
     splash->show();
-
-    Profile = {
-        .Name    = data[ "name" ].get<std::string>(),
-        .Host    = data[ "host" ].get<std::string>(),
-        .Port    = data[ "port" ].get<std::string>(),
-        .User    = data[ "username" ].get<std::string>(),
-        .Pass    = data[ "password" ].get<std::string>(),
-        .Token   = token.value(),
-        .SslHash = ssl_hash.value(),
-    };
 
     Theme.setStyleSheet( stylesheet );
 
@@ -139,19 +240,6 @@ auto HavocClient::ApiLogin(
         "POST",
         "application/json"
     );
-
-    if ( ! ssl_hash.empty() ) {
-        ssl_box.setStyleSheet( StyleSheet() );
-        ssl_box.setWindowTitle( "Verify SSL Fingerprint" );
-        ssl_box.setText( std::format( "The team server's SSL fingerprint is: \n\n{}\n\nDoes this match the fingerprint presented in the server console?", ssl_hash ).c_str() );
-        ssl_box.setIcon( QMessageBox::Warning );
-        ssl_box.setStandardButtons( QMessageBox::Yes | QMessageBox::No );
-        ssl_box.setDefaultButton( QMessageBox::Yes );
-
-        if ( ssl_box.exec() == QMessageBox::No ) {
-            return {};
-        }
-    }
 
     if ( status_code == 401 ) {
         //
@@ -227,7 +315,7 @@ auto HavocClient::ApiSend(
     const bool         keep_alive
 ) -> std::tuple<int, std::string> {
     auto [status, response, ssl_hash] = RequestSend(
-        std::format( "https://{}:{}/{}", Havoc->Profile.Host, Havoc->Profile.Port, endpoint ),
+        std::format( "https://{}:{}/{}", Havoc->session.host, Havoc->session.port, endpoint ),
         body.dump(),
         keep_alive,
         "POST",
@@ -239,7 +327,7 @@ auto HavocClient::ApiSend(
     // validate that the ssl hash against the
     // profile that has been marked as safe
     //
-    if ( ssl_hash != Havoc->Profile.SslHash ) {
+    if ( ssl_hash != Havoc->session.ssl_hash ) {
         //
         // TODO: use QMetaObject::invokeMethod to call MessageBox
         //       to alert that the ssl hash has been changed
@@ -475,8 +563,8 @@ auto HavocClient::RequestSend(
         request.setHeader( QNetworkRequest::ContentTypeHeader, QString::fromStdString( content_type ) );
     }
 
-    if ( havoc_token && ( ! Havoc->Profile.Token.empty() ) ) {
-        request.setRawHeader( "x-havoc-token", Havoc->Profile.Token.c_str() );
+    if ( havoc_token && ( ! Havoc->session.token.empty() ) ) {
+        request.setRawHeader( "x-havoc-token", Havoc->session.token.c_str() );
     }
 
     for ( const auto& item : headers ) {
@@ -552,8 +640,8 @@ auto HavocClient::eventClosed() -> void {
     Exit();
 }
 
-auto HavocClient::Server() const -> std::string { return Profile.Host + ":" + Profile.Port; }
-auto HavocClient::Token()  const -> std::string { return Profile.Token; }
+auto HavocClient::Server() const -> std::string { return session.host + ":" + session.port; }
+auto HavocClient::Token()  const -> std::string { return session.token; }
 
 auto HavocClient::eventHandle(
     const QByteArray& request
@@ -880,7 +968,7 @@ auto HavocClient::SetupDirectory(
     config_path.open( QIODevice::ReadWrite );
 
     try {
-        Config = toml::parse( config_path.fileName().toStdString() );
+        config = toml::parse( config_path.fileName().toStdString() );
     } catch ( std::exception& e ) {
         spdlog::error( "failed to parse toml configuration: {}", e.what() );
         return false;
@@ -933,8 +1021,8 @@ auto HavocClient::ScriptConfigProcess(
     //
     // load the registered scripts
     //
-    if ( Config.contains( "scripts" ) && Config.at( "scripts" ).is_table() ) {
-        auto scripts_tbl = Config.at( "scripts" ).as_table();
+    if ( config.contains( "scripts" ) && config.at( "scripts" ).is_table() ) {
+        auto scripts_tbl = config.at( "scripts" ).as_table();
 
         if ( scripts_tbl.contains( "files" ) && scripts_tbl.at( "files" ).is_array() ) {
             for ( const auto& file : scripts_tbl.at( "files" ).as_array() ) {
@@ -947,6 +1035,83 @@ auto HavocClient::ScriptConfigProcess(
             }
         }
     }
+}
+
+auto HavocClient::ProfileSync(
+    void
+) -> void {
+    auto profile_path = QFile( directory().path() + "/.profile.toml" );
+
+    if ( ! profile_path.exists() ) {
+        profile_path.open( QIODevice::ReadWrite );
+        profile_path.close();
+
+        //
+        // profile file does not exist yet so we have
+        // nothing to load and sync to the client
+        //
+        return;
+    }
+
+    try {
+        profile = toml::parse( profile_path.fileName().toStdString() );
+    } catch ( std::exception& e ) {
+        spdlog::error( "failed to parse toml profile: {}", e.what() );
+    }
+}
+
+auto HavocClient::ProfileSave(
+    void
+) -> void {
+    auto profile_path = QFile( directory().path() + "/.profile.toml" );
+
+    if ( ! profile_path.open( QIODevice::WriteOnly | QIODevice::Truncate ) ) {
+        spdlog::error( "failed to open profile file: {}", profile_path.errorString().toStdString() );
+        return;
+    }
+
+    profile_path.write( QByteArray::fromStdString( toml::format( profile ) ) );
+    profile_path.close();
+}
+
+auto HavocClient::ProfileInsert(
+    const std::string& type,
+    const toml::value& data
+) -> void {
+    auto type_tbl = toml::array();
+
+    ProfileSync();
+
+    if ( profile.contains( type ) ) {
+        type_tbl = toml::find<toml::array>( profile, type );
+    }
+
+    type_tbl.push_back( data );
+
+    profile[ type ] = type_tbl;
+
+    ProfileSave();
+}
+
+auto HavocClient::ProfileQuery(
+    const std::string& type
+) -> toml::array {
+    ProfileSync();
+
+    if ( profile.contains( type ) ) {
+        return toml::find<toml::array>( profile, type );
+    }
+
+    return toml::array();
+}
+
+auto HavocClient::ProfileDelete(
+    const std::string& type,
+    const std::int32_t entry
+) -> void {
+    ProfileSync();
+
+    ProfileSave();
 }
 
 HavocClient::ActionObject::ActionObject() {}

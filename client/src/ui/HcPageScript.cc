@@ -198,8 +198,8 @@ auto HcPagePlugins::processPlugins(
     // register all specified repositories
     //
 
-    if ( Havoc->Config.contains( "repository" ) ) {
-        for ( const auto& repository : toml::find<toml::array>( Havoc->Config, "repository" ) ) {
+    if ( Havoc->config.contains( "repository" ) ) {
+        for ( const auto& repository : toml::find<toml::array>( Havoc->config, "repository" ) ) {
             if ( repository.contains( "link" ) && repository.at( "link" ).is_string() ) {
                 auto plugins      = std::vector<std::string>();
                 auto access_token = std::string();

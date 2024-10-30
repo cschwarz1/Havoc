@@ -77,14 +77,14 @@ private:
     // current connection info
     //
     struct {
-        std::string Name;
-        std::string Host;
-        std::string Port;
-        std::string User;
-        std::string Pass;
-        std::string Token;
-        std::string SslHash;
-    } Profile;
+        std::string name;
+        std::string host;
+        std::string port;
+        std::string user;
+        std::string pass;
+        std::string token;
+        std::string ssl_hash;
+    } session;
 
     HcWorker<HcEventWorker>     Events;
     HcWorker<HcHeartbeatWorker> Heartbeat;
@@ -102,8 +102,14 @@ private:
 public:
     HcMainWindow*  Gui    = {};
     QSplashScreen* splash = {};
-    toml_t         Config = {};
     HcTheme        Theme;
+
+    //
+    // toml based profiles
+    // and configurations
+    //
+    toml_t config  = {};
+    toml_t profile = {};
 
     HcPyEngine* PyEngine;
 
@@ -304,6 +310,32 @@ public:
 
     auto ScriptConfigProcess(
         void
+    ) -> void;
+
+    //
+    // Profile manager
+    //
+
+    auto ProfileSync(
+        void
+    ) -> void;
+
+    auto ProfileSave(
+        void
+    ) -> void;
+
+    auto ProfileInsert(
+        const std::string& type,
+        const toml::value& data
+    ) -> void;
+
+    auto ProfileQuery(
+        const std::string& type
+    ) -> toml::array;
+
+    auto ProfileDelete(
+        const std::string& type,
+        const std::int32_t entry
     ) -> void;
 
 Q_SIGNALS:

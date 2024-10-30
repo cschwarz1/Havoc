@@ -551,8 +551,9 @@ auto HcPageListener::getListener(
     return {};
 }
 
-auto HcListener::stop() -> std::optional<std::string>
-{
+auto HcListener::stop(
+    void
+) -> std::optional<std::string> {
     auto error = std::string();
     auto data  = json();
 
@@ -592,8 +593,9 @@ ERROR_SERVER_RESPONSE:
     return std::optional<std::string>( "invalid response from the server" );
 }
 
-auto HcListener::start() -> std::optional<std::string>
-{
+auto HcListener::start(
+    void
+) -> std::optional<std::string> {
     auto error = std::string();
     auto data  = json();
 
@@ -634,8 +636,9 @@ ERROR_SERVER_RESPONSE:
     return std::optional<std::string>( "invalid response from the server" );
 }
 
-auto HcListener::restart() -> std::optional<std::string>
-{
+auto HcListener::restart(
+    void
+) -> std::optional<std::string> {
     auto error = std::string();
     auto data  = json();
 
@@ -675,8 +678,9 @@ ERROR_SERVER_RESPONSE:
     return std::optional<std::string>( "invalid response from the server" );
 }
 
-auto HcListener::edit() -> std::optional<std::string>
-{
+auto HcListener::edit(
+    void
+) -> std::optional<std::string> {
     auto listener = new HcListenerDialog( protocol.c_str() );
     auto error    = std::string();
     auto data     = json();
@@ -740,8 +744,9 @@ ERROR_SERVER_RESPONSE:
     return std::optional<std::string>( "invalid response from the server" );
 }
 
-auto HcListener::remove() -> std::optional<std::string>
-{
+auto HcListener::remove(
+    void
+) -> std::optional<std::string> {
     auto error = std::string();
     auto data  = json();
 
