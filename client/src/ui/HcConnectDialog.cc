@@ -191,7 +191,7 @@ auto HcConnectDialog::sanityCheckInput() -> bool {
     return true;
 }
 
-auto HcConnectDialog::pressedConnect() const -> bool { return PressedConnect; }
+auto HcConnectDialog::connected() const -> bool { return PressedConnect; }
 
 
 

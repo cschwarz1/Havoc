@@ -39,8 +39,6 @@ include_directories( extern/pybind11_json/include )
 include_directories( extern/json/include )
 include_directories( extern/spdlog/include )
 include_directories( extern/toml )
-include_directories( extern/http )
-include_directories( extern/http )
 include_directories( extern/Qt-Advanced-Docking-System/src )
 
 ##

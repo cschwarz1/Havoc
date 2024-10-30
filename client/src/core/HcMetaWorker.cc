@@ -27,14 +27,13 @@ void HcMetaWorker::run() {
 auto HcMetaWorker::listeners(
     void
 ) -> void {
-    auto result    = httplib::Result();
     auto listeners = json();
 
     Havoc->splash->showMessage( "pulling active listeners", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
 
-    result = Havoc->ApiSend( "/api/listener/list", {} );
+    auto [status_code, response] = Havoc->ApiSend( "/api/listener/list", {} );
 
-    if ( result->status != 200 ) {
+    if ( status_code != 200 ) {
         Helper::MessageBox(
             QMessageBox::Critical,
             "listener processing failure",
@@ -44,7 +43,7 @@ auto HcMetaWorker::listeners(
     }
 
     try {
-        if ( ( listeners = json::parse( result->body ) ).is_discarded() ) {
+        if ( ( listeners = json::parse( response ) ).is_discarded() ) {
             spdlog::debug( "listeners processing json response has been discarded" );
             return;
         }
@@ -78,15 +77,14 @@ auto HcMetaWorker::listeners(
 auto HcMetaWorker::agents(
     void
 ) -> void {
-    auto result = httplib::Result();
     auto agents = json();
     auto uuid   = std::string();
 
     Havoc->splash->showMessage( "pulling agent sessions", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
 
-    result = Havoc->ApiSend( "/api/agent/list", {} );
+    auto [status_code, response] = Havoc->ApiSend( "/api/agent/list", {} );
 
-    if ( result->status != 200 ) {
+    if ( status_code != 200 ) {
         Helper::MessageBox(
             QMessageBox::Critical,
             "agent processing failure",
@@ -96,7 +94,7 @@ auto HcMetaWorker::agents(
     }
 
     try {
-        if ( ( agents = json::parse( result->body ) ).is_discarded() ) {
+        if ( ( agents = json::parse( response ) ).is_discarded() ) {
             spdlog::debug( "agent processing json response has been discarded" );
             return;
         }
@@ -147,12 +145,11 @@ auto HcMetaWorker::agents(
 auto HcMetaWorker::console(
     const std::string& uuid
 ) -> void {
-    auto result = httplib::Result();
-    auto list   = json();
+    auto list = json();
 
-    result = Havoc->ApiSend( "/api/agent/console", { { "uuid", uuid } } );
+    auto [status_code, response] = Havoc->ApiSend( "/api/agent/console", { { "uuid", uuid } } );
 
-    if ( result->status != 200 ) {
+    if ( status_code != 200 ) {
         Helper::MessageBox(
             QMessageBox::Critical,
             "agent console processing failure",
@@ -162,7 +159,7 @@ auto HcMetaWorker::console(
     }
 
     try {
-        if ( ( list = json::parse( result->body ) ).is_discarded() ) {
+        if ( ( list = json::parse( response ) ).is_discarded() ) {
             spdlog::debug( "agent console processing json response has been discarded" );
             return;
         }

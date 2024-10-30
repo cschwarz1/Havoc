@@ -1,62 +1,4 @@
 #include <Havoc.h>
-#include <QTimer>
-#include <QSplashScreen>
-#include <QtCore5Compat/QTextCodec>
-
-auto HttpErrorToString(
-    const httplib::Error& error
-) -> std::optional<std::string> {
-    switch ( error ) {
-        case httplib::Error::Unknown:
-            return "Unknown";
-
-        case httplib::Error::Connection:
-            return ( "Connection" );
-
-        case httplib::Error::BindIPAddress:
-            return ( "BindIPAddress" );
-
-        case httplib::Error::Read:
-            return ( "Read" );
-
-        case httplib::Error::Write:
-            return ( "Write" );
-
-        case httplib::Error::ExceedRedirectCount:
-            return ( "ExceedRedirectCount" );
-
-        case httplib::Error::Canceled:
-            return ( "Canceled" );
-
-        case httplib::Error::SSLConnection:
-            return ( "SSLConnection" );
-
-        case httplib::Error::SSLLoadingCerts:
-            return ( "SSLLoadingCerts" );
-
-        case httplib::Error::SSLServerVerification:
-            return ( "SSLServerVerification" );
-
-        case httplib::Error::UnsupportedMultipartBoundaryChars:
-            return ( "UnsupportedMultipartBoundaryChars" );
-
-        case httplib::Error::Compression:
-            return ( "Compression" );
-
-        case httplib::Error::ConnectionTimeout:
-            return ( "ConnectionTimeout" );
-
-        case httplib::Error::ProxyConnection:
-            return ( "ProxyConnection" );
-
-        case httplib::Error::SSLPeerCouldBeClosed_:
-            return ( "SSLPeerCouldBeClosed_" );
-
-        default: break;
-    }
-
-    return std::nullopt;
-}
 
 HavocClient::HavocClient() {
     /* initialize logger */
@@ -96,12 +38,11 @@ auto HavocClient::Main(
     int    argc,
     char** argv
 ) -> void {
-    auto connector = new HcConnectDialog();
-    auto result    = httplib::Result();
-    auto response  = json{};
-    auto error     = std::string( "Failed to send login request: " );
-    auto data      = json();
-    auto token     = std::optional<std::string>();
+    auto connector  = new HcConnectDialog();
+    auto response   = json{};
+    auto error      = std::string( "Failed to send login request: " );
+    auto data       = json();
+    auto stylesheet = StyleSheet();
 
     if ( argc >= 2 ) {
         //
@@ -113,7 +54,7 @@ auto HavocClient::Main(
         }
     }
 
-    if ( ( data = connector->start() ).empty() || ! connector->pressedConnect() ) {
+    if ( ( data = connector->start() ).empty() || ! connector->connected() ) {
         return;
     }
 
@@ -122,7 +63,8 @@ auto HavocClient::Main(
         return;
     }
 
-    if ( ! ( token = ApiLogin( data ) ).has_value() ) {
+    auto [token, ssl_hash] = ApiLogin( data );
+    if ( ( ! token.has_value() ) || ( ! ssl_hash.has_value() ) ) {
         Helper::MessageBox(
             QMessageBox::Critical,
             "Login failure",
@@ -136,21 +78,22 @@ auto HavocClient::Main(
     splash->show();
 
     Profile = {
-        .Name  = data[ "name" ].get<std::string>(),
-        .Host  = data[ "host" ].get<std::string>(),
-        .Port  = data[ "port" ].get<std::string>(),
-        .User  = data[ "username" ].get<std::string>(),
-        .Pass  = data[ "password" ].get<std::string>(),
-        .Token = token.value()
+        .Name    = data[ "name" ].get<std::string>(),
+        .Host    = data[ "host" ].get<std::string>(),
+        .Port    = data[ "port" ].get<std::string>(),
+        .User    = data[ "username" ].get<std::string>(),
+        .Pass    = data[ "password" ].get<std::string>(),
+        .Token   = token.value(),
+        .SslHash = ssl_hash.value(),
     };
 
-    Theme.setStyleSheet( StyleSheet() );
+    Theme.setStyleSheet( stylesheet );
 
     //
     // create main window
     //
     Gui = new HcMainWindow;
-    Gui->setStyleSheet( StyleSheet() );
+    Gui->setStyleSheet( stylesheet );
 
     //
     // setup Python thread
@@ -171,41 +114,57 @@ auto HavocClient::Main(
 }
 
 auto HavocClient::Exit() -> void {
-    QApplication::exit( 0 );
+    exit( 0 );
 }
 
 auto HavocClient::ApiLogin(
     const json& data
-) -> std::optional<std::string> {
-    auto result   = httplib::Result();
-    auto http     = httplib::Client( "https://" + data[ "host" ].get<std::string>() + ":" + data[ "port" ].get<std::string>() );
-    auto error    = std::string();
-    auto response = json();
-
-    http.enable_server_certificate_verification( false );
+) -> std::tuple<
+    std::optional<std::string>,
+    std::optional<std::string>
+> {
+    auto error     = std::string();
+    auto object    = json();
+    auto api_login = std::format( "https://{}:{}/api/login", data[ "host" ].get<std::string>(), data[ "port" ].get<std::string>() );
+    auto ssl_box   = QMessageBox();
 
     //
-    // send request with the operator
-    // login data to the /api/login endpoint
+    // send request with the specified login data
+    // and also get the remote server ssl hash
     //
-    result = http.Post( "/api/login", data.dump(), "application/json" );
-    if ( result.error() != httplib::Error::Success ) {
-        spdlog::error( "failed to send login request: {}", HttpErrorToString( result.error() ).value() );
+    auto [status_code, response, ssl_hash] = RequestSend(
+        api_login,
+        data.dump(),
+        false,
+        "POST",
+        "application/json"
+    );
 
-        return {};
+    if ( ! ssl_hash.empty() ) {
+        ssl_box.setStyleSheet( StyleSheet() );
+        ssl_box.setWindowTitle( "Verify SSL Fingerprint" );
+        ssl_box.setText( std::format( "The team server's SSL fingerprint is: \n\n{}\n\nDoes this match the fingerprint presented in the server console?", ssl_hash ).c_str() );
+        ssl_box.setIcon( QMessageBox::Warning );
+        ssl_box.setStandardButtons( QMessageBox::Yes | QMessageBox::No );
+        ssl_box.setDefaultButton( QMessageBox::Yes );
+
+        if ( ssl_box.exec() == QMessageBox::No ) {
+            return {};
+        }
     }
 
-    //
-    // 401 Unauthorized: Failed to log in
-    //
-    if ( result->status == 401 ) {
-        if ( result->body.empty() ) {
+    if ( status_code == 401 ) {
+        //
+        // 401 Unauthorized: failed to log in
+        //
+
+        if ( ! response.has_value() ) {
             spdlog::error( "failed to login: unauthorized (invalid credentials)" );
             return {};
         }
 
         try {
-            if ( ( response = json::parse( result->body ) ).is_discarded() ) {
+            if ( ( object = json::parse( response.value() ) ).is_discarded() ) {
                 spdlog::error( "failed to parse login json response: json has been discarded" );
                 return {};
             }
@@ -214,32 +173,36 @@ auto HavocClient::ApiLogin(
             return {};
         }
 
-        if ( ! response.contains( "error" ) ) {
+        if ( ! object.contains( "error" ) ) {
             return {};
         }
 
-        if ( ! response[ "error" ].is_string() ) {
+        if ( ! object[ "error" ].is_string() ) {
             return {};
         }
 
-        spdlog::error( "failed to login: {}", response[ "error" ].get<std::string>() );
+        spdlog::error( "failed to login: {}", object[ "error" ].get<std::string>() );
 
         return {};
     }
 
-    if ( result->status != 200 ) {
-        spdlog::error( "unexpected response: http status code {}", result->status );
+    if ( status_code != 200 ) {
+        spdlog::error( "unexpected response: http status code {}", status_code );
         return {};
     }
 
-    spdlog::debug( "result: {}", result->body );
+    spdlog::info( "ssl hash: {}", ssl_hash );
 
-    if ( result->body.empty() ) {
+    if ( response.value().empty() ) {
         return {};
     }
+
+    //
+    // parse the token from the request
+    //
 
     try {
-        if ( ( response = json::parse( result->body ) ).is_discarded() ) {
+        if ( ( object = json::parse( response.value() ) ).is_discarded() ) {
             spdlog::error( "failed to parse login json response: json has been discarded" );
             return {};
         }
@@ -248,57 +211,49 @@ auto HavocClient::ApiLogin(
         return {};
     }
 
-    if ( ! response.contains( "token" ) || ! response[ "token" ].is_string() ) {
+    if ( ! object.contains( "token" ) || ! object[ "token" ].is_string() ) {
         return {};
     }
 
-    return response[ "token" ].get<std::string>();
+    return {
+        object[ "token" ].get<std::string>(),
+        ssl_hash
+    };
 }
 
 auto HavocClient::ApiSend(
     const std::string& endpoint,
     const json&        body,
     const bool         keep_alive
-) const -> httplib::Result {
-    auto http   = httplib::Client( "https://" + Profile.Host + ":" + Profile.Port );
-    auto result = httplib::Result();
-    auto error  = std::string( "Failed to send api request: " );
+) -> std::tuple<int, std::string> {
+    auto [status_code, response, ssl_hash] = RequestSend(
+        std::format( "https://{}:{}/{}", Havoc->Profile.Host, Havoc->Profile.Port, endpoint ),
+        body.dump(),
+        keep_alive,
+        "POST",
+        "application/json",
+        true
+    );
 
     //
-    // only way to keep the connection alive even while we have
-    // "keep-alive" enabled it will shut down after 5 seconds
+    // validate that the ssl hash against the
+    // profile that has been marked as safe
     //
-    if ( keep_alive ) {
-        http.set_read_timeout( INT32_MAX );
-        http.set_connection_timeout( INT32_MAX );
-        http.set_write_timeout( INT32_MAX );
+    if ( ssl_hash != Havoc->Profile.SslHash ) {
+        //
+        // TODO: use QMetaObject::invokeMethod to call MessageBox
+        //       to alert that the ssl hash has been changed
+        //
+        spdlog::error( "failed to send request: invalid ssl fingerprint detected ({})", ssl_hash );
+        return {};
     }
 
-    //
-    // configure the client
-    //
-    http.set_keep_alive( keep_alive );
-    http.enable_server_certificate_verification( false );
-    http.set_default_headers( {
-        { "x-havoc-token", Havoc->Profile.Token }
-    } );
-
-    //
-    // send the request to our endpoint
-    //
-    result = http.Post( endpoint, body.dump(), "application/json" );
-
-    if ( HttpErrorToString( result.error() ).has_value() ) {
-        spdlog::error( "Failed to send login request: {}", HttpErrorToString( result.error() ).value() );
-    }
-
-    return result;
+    return { status_code, response.value() };
 }
 
 auto HavocClient::ServerPullPlugins(
     void
 ) -> void {
-    auto result    = httplib::Result();
     auto plugins   = json();
     auto uuid      = std::string();
     auto name      = std::string();
@@ -310,8 +265,8 @@ auto HavocClient::ServerPullPlugins(
 
     splash->showMessage( "pulling plugins information", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
 
-    result = ApiSend( "/api/plugin/list", {} );
-    if ( result->status != 200 ) {
+    auto [status_code, response] = ApiSend( "/api/plugin/list", {} );
+    if ( status_code != 200 ) {
         Helper::MessageBox(
             QMessageBox::Critical,
             "plugin processing failure",
@@ -321,7 +276,7 @@ auto HavocClient::ServerPullPlugins(
     }
 
     try {
-        if ( ( plugins = json::parse( result->body ) ).is_discarded() ) {
+        if ( ( plugins = json::parse( response ) ).is_discarded() ) {
             spdlog::debug( "plugin processing json response has been discarded" );
             return;
         }
@@ -377,6 +332,11 @@ auto HavocClient::ServerPullPlugins(
         if ( ( ! plugin.contains( "resources" ) ) && ( ! plugin[ "resources" ].is_array() ) ) {
             continue;
         }
+
+        //
+        // we will display the user with a prompt to get confirmation
+        // if they even want to install the plugin from the remote server
+        //
 
         message = std::format( "A plugin will be installed from the remote server: {} ({})\n", name, version );
         details = "resources to be downloaded locally:\n";
@@ -441,9 +401,8 @@ auto HavocClient::ServerPullResource(
     const std::string& version,
     const std::string& resource
 ) -> bool {
-    auto result       = httplib::Result();
-    auto dir_plugin   = QDir();
     auto dir_resource = QDir();
+    auto dir_plugin   = QDir();
     auto file_info    = QFileInfo();
 
     if ( ! ( dir_plugin = QDir( std::format( "{}/plugins/{}@{}", directory().path().toStdString(), name, version ).c_str() ) ).exists() ) {
@@ -465,18 +424,18 @@ auto HavocClient::ServerPullResource(
 
     auto fil_resource = QFile( file_info.absoluteFilePath() );
     if ( ! fil_resource.exists() ) {
-        result = Havoc->ApiSend( "/api/plugin/resource", {
+        auto [status_code, response] = Havoc->ApiSend( "/api/plugin/resource", {
             { "name",     name     },
             { "resource", resource },
         } );
 
-        if ( result->status != 200 ) {
-            spdlog::debug("failed to pull plugin resource {} from {}: {}", name, resource, result->body);
+        if ( status_code != 200 ) {
+            spdlog::debug("failed to pull plugin resource {} from {}: {}", name, resource, response );
             return false;
         }
 
         if ( fil_resource.open( QIODevice::WriteOnly ) ) {
-            fil_resource.write( result->body.c_str(), static_cast<qint64>( result->body.length() ) );
+            fil_resource.write( QByteArray::fromStdString( response ) );
         } else {
             spdlog::debug( "failed to open file resource locally {}", file_info.absoluteFilePath().toStdString() );
         }
@@ -485,6 +444,107 @@ auto HavocClient::ServerPullResource(
     }
 
     return true;
+}
+
+auto HavocClient::RequestSend(
+    const std::string&   url,
+    const std::string&   data,
+    const bool           keep_alive,
+    const std::string&   method,
+    const std::string&   content_type,
+    const bool           havoc_token,
+    const json::array_t& headers
+) -> std::tuple<int, std::optional<std::string>, std::string> {
+    auto request     = QNetworkRequest( QString::fromStdString( url ) );
+    auto reply       = static_cast<QNetworkReply*>( nullptr );
+    auto event       = QEventLoop();
+    auto response    = std::string();
+    auto status_code = 0;
+    auto error       = QNetworkReply::NoError;
+    auto error_str   = std::string();
+    auto ssl_chain   = QList<QSslCertificate>();
+    auto ssl_hash    = std::string();
+    auto ssl_config  = QSslConfiguration::defaultConfiguration();
+    auto _network    = QNetworkAccessManager();
+
+    //
+    // prepare request headers
+    //
+
+    if ( ! content_type.empty() ) {
+        request.setHeader( QNetworkRequest::ContentTypeHeader, QString::fromStdString( content_type ) );
+    }
+
+    if ( havoc_token && ( ! Havoc->Profile.Token.empty() ) ) {
+        request.setRawHeader( "x-havoc-token", Havoc->Profile.Token.c_str() );
+    }
+
+    for ( const auto& item : headers ) {
+        for ( auto it = item.begin(); it != item.end(); ++it ) {
+            std::cout << it.key() << ": " << it.value() << std::endl;
+            request.setRawHeader( it.key().c_str(), it.value().get<std::string>().c_str() );
+        }
+    }
+
+    if ( keep_alive ) {
+        request.setRawHeader( "Connection", "Keep-Alive" );
+    }
+
+    //
+    // we are going to adjust the ssl configuration
+    // to disable certification verification
+    //
+    ssl_config.setPeerVerifyMode( QSslSocket::VerifyNone );
+    request.setSslConfiguration( ssl_config );
+
+    //
+    // send request to the endpoint url via specified method
+    //
+    if ( method == "POST" ) {
+        reply = _network.post( request, QByteArray::fromStdString( data ) );
+    } else if ( method == "GET" ) {
+        reply = _network.get( request );
+    } else {
+        spdlog::error( "[RequestSend] invalid http method: {}", method );
+        return {};
+    }
+
+    //
+    // we are going to wait for the request to finish, during the
+    // waiting time we are going to continue executing the event loop
+    //
+    connect( reply, &QNetworkReply::finished, &event, &QEventLoop::quit );
+    event.exec();
+
+    //
+    // parse the request data such as
+    // error, response, and status code
+    //
+    error       = reply->error();
+    error_str   = reply->errorString().toStdString();
+    response    = reply->readAll().toStdString();
+    status_code = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
+
+    //
+    // get the SSL certificate SHA-256 hash
+    //
+    if ( error == QNetworkReply::NoError ) {
+        if ( ! ( ssl_chain = reply->sslConfiguration().peerCertificateChain() ).isEmpty() ) {
+            ssl_hash = ssl_chain.first().digest( QCryptographicHash::Sha256 ).toHex().toStdString();
+        }
+    }
+
+    reply->deleteLater();
+
+    //
+    // now handle and retrieve the response from the request
+    //
+    if ( error != QNetworkReply::NoError ) {
+        spdlog::error( "[RequestSend] invalid network reply: {}", error_str );
+        return {};
+    }
+
+    return std::make_tuple( status_code, response, ssl_hash );
 }
 
 auto HavocClient::eventClosed() -> void {
@@ -544,7 +604,9 @@ auto HavocClient::ProtocolObject(
     return std::nullopt;
 }
 
-auto HavocClient::Protocols() -> std::vector<std::string> {
+auto HavocClient::Protocols(
+    void
+) -> std::vector<std::string> {
     auto names = std::vector<std::string>();
 
     for ( auto& listener : protocols ) {
@@ -554,113 +616,60 @@ auto HavocClient::Protocols() -> std::vector<std::string> {
     return names;
 }
 
-auto HavocClient::SetupThreads() -> void {
+auto HavocClient::SetupThreads(
+    void
+) -> void {
     //
     // HcEventWorker thread
     //
     // now set up the event thread and dispatcher
     //
-    Events.Thread = new QThread;
-    Events.Worker = new HcEventWorker;
-    Events.Worker->moveToThread( Events.Thread );
-
-    connect( Events.Thread, &QThread::started, Events.Worker, &HcEventWorker::run );
-    connect( Events.Worker, &HcEventWorker::availableEvent, this, &HavocClient::eventHandle );
-    connect( Events.Worker, &HcEventWorker::socketClosed, this, &HavocClient::eventClosed );
+    {
+        connect( Events.Thread, &QThread::started, Events.Worker, &HcEventWorker::run );
+        connect( Events.Worker, &HcEventWorker::availableEvent, this, &HavocClient::eventHandle );
+        connect( Events.Worker, &HcEventWorker::socketClosed, this, &HavocClient::eventClosed );
+    }
 
     //
     // HcHeartbeatWorker thread
     //
     // start the heartbeat worker thread
     //
-    Heartbeat.Thread = new QThread;
-    Heartbeat.Worker = new HcHeartbeatWorker;
-    Heartbeat.Worker->moveToThread( Heartbeat.Thread );
+    {
+        connect( Heartbeat.Thread, &QThread::started, Heartbeat.Worker, &HcHeartbeatWorker::run );
 
-    connect( Heartbeat.Thread, &QThread::started, Heartbeat.Worker, &HcHeartbeatWorker::run );
-
-    //
-    // fire up the even thread that is going to
-    // process heart beat events
-    //
-    Heartbeat.Thread->start();
+        //
+        // fire up the even thread that is going to
+        // process heart beat events
+        //
+        Heartbeat.Thread->start();
+    }
 
     //
     // HcMetaWorker thread
     //
     // start the meta worker to pull listeners and agent sessions thread
     //
-    MetaWorker.Thread = new QThread;
-    MetaWorker.Worker = new HcMetaWorker;
-    MetaWorker.Worker->moveToThread( MetaWorker.Thread );
+    {
+        connect( MetaWorker.Thread, &QThread::started, MetaWorker.Worker, &HcMetaWorker::run );
+        connect( MetaWorker.Worker, &HcMetaWorker::Finished, this, [&](){
+            //
+            // only start the event worker once the meta worker finished
+            // pulling all the listeners, agents, etc. from the server
+            //
+            spdlog::info( "MetaWorker finished" );
+            splash->close();
+            Gui->renderWindow();
+            Events.Thread->start();
+        } );
 
-    connect( MetaWorker.Thread, &QThread::started, MetaWorker.Worker, &HcMetaWorker::run );
-    connect( MetaWorker.Worker, &HcMetaWorker::Finished, this, [&](){
         //
-        // only start the event worker once the meta worker finished
-        // pulling all the listeners, agents, etc. from the server
+        // connect methods to add listeners, agents, etc. to the user interface (ui)
         //
-        spdlog::info( "MetaWorker finished" );
-        splash->close();
-        Gui->renderWindow();
-        Events.Thread->start();
-    } );
-
-    //
-    // connect methods to add listeners, agents, etc. to the user interface (ui)
-    //
-    connect( MetaWorker.Worker, &HcMetaWorker::AddListener,          Gui, &HcMainWindow::AddListener  );
-    connect( MetaWorker.Worker, &HcMetaWorker::AddAgent,             Gui, &HcMainWindow::AddAgent     );
-    connect( MetaWorker.Worker, &HcMetaWorker::AddAgentConsole,      Gui, &HcMainWindow::AgentConsole );
-
-    //
-    // HcMetaWorker thread
-    //
-    // start the plugin worker to pull and register
-    // client plugin scripts to the local file system
-    //
-    // PluginWorker.Thread = new QThread;
-    // PluginWorker.Worker = new HcMetaWorker( true );
-    // PluginWorker.Worker->moveToThread( PluginWorker.Thread );
-    //
-    // connect( PluginWorker.Thread, &QThread::started,  PluginWorker.Worker, &HcMetaWorker::run );
-    // connect( PluginWorker.Worker, &HcMetaWorker::Finished, this, [&]() {
-    //     spdlog::debug( "PluginWorker finished" );
-    //
-    //     splash->showMessage( "process plugins", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
-    //
-    //     //
-    //     // start the plugin worker of the store to load up all the
-    //     // plugins from the local file system that we just pulled
-    //     //
-    //     Gui->PageScripts->processPlugins();
-    //
-    //     //
-    //     // load the registered scripts
-    //     //
-    //     if ( Config.contains( "scripts" ) && Config.at( "scripts" ).is_table() ) {
-    //         auto scripts_tbl = Config.at( "scripts" ).as_table();
-    //
-    //         if ( scripts_tbl.contains( "files" ) && scripts_tbl.at( "files" ).is_array() ) {
-    //             for ( const auto& file : scripts_tbl.at( "files" ).as_array() ) {
-    //                 if ( ! file.is_string() ) {
-    //                     spdlog::error( "configuration scripts file value is not an string" );
-    //                     continue;
-    //                 }
-    //
-    //                 ScriptLoad( file.as_string() );
-    //             }
-    //         }
-    //     }
-    //
-    //     //
-    //     // now start up the meta worker to
-    //     // pull the listeners and agent sessions
-    //     //
-    //     MetaWorker.Thread->start();
-    // });
-    //
-    // PluginWorker.Thread->start();
+        connect( MetaWorker.Worker, &HcMetaWorker::AddListener,          Gui, &HcMainWindow::AddListener  );
+        connect( MetaWorker.Worker, &HcMetaWorker::AddAgent,             Gui, &HcMainWindow::AddAgent     );
+        connect( MetaWorker.Worker, &HcMetaWorker::AddAgentConsole,      Gui, &HcMainWindow::AgentConsole );
+    }
 }
 
 auto HavocClient::AddBuilder(

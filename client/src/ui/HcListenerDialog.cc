@@ -127,9 +127,7 @@ auto HcListenerDialog::start() -> void {
 }
 
 auto HcListenerDialog::save() -> void {
-    auto result    = httplib::Result();
     auto data      = json();
-    auto found     = false;
     auto exception = std::string();
 
     if ( InputName->text().isEmpty() ) {
@@ -167,19 +165,18 @@ auto HcListenerDialog::save() -> void {
 
     State = Error;
 
-    if ( edited_config.empty() ) {
-        result = Havoc->ApiSend( "/api/listener/start", data );
-    } else {
-        result = Havoc->ApiSend( "/api/listener/edit", data );
-    }
+    auto [status_code, response] = Havoc->ApiSend(
+        edited_config.empty() ? "/api/listener/start" : "/api/listener/edit",
+        data
+    );
 
-    if ( result->status != 200 ) {
-        if ( result->body.empty() ) {
+    if ( status_code != 200 ) {
+        if ( response.empty() ) {
             goto ERROR_SERVER_RESPONSE;
         }
 
         try {
-            if ( ( data = json::parse( result->body ) ).is_discarded() ) {
+            if ( ( data = json::parse( response ) ).is_discarded() ) {
                 goto ERROR_SERVER_RESPONSE;
             }
         } catch ( std::exception& e ) {

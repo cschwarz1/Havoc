@@ -23,17 +23,16 @@ public:
             // is remote/link image resource
             //
             if ( ! name.isLocalFile() ) {
-                auto client = httplib::Client( name.scheme().toStdString() + "://" + name.host().toStdString() );
-                auto result = httplib::Result();
+                auto [status, response, _] = Havoc->RequestSend(
+                    name.toString().toStdString(),
+                    std::string(),
+                    false,
+                    "GET",
+                    std::string(),
+                    false
+                );
 
-                result = client.Get( name.path().toStdString() );
-
-                if ( HttpErrorToString( result.error() ).has_value() ) {
-                    spdlog::error( "HcTextEdit error: failed to retrieve {} resource: {}", name.toString().toStdString(), HttpErrorToString( result.error() ).value() );
-                    return {};
-                }
-
-                return QByteArray( result->body.c_str(), result->body.length() );
+                return QByteArray::fromStdString( response.value() );
             }
         }
 
@@ -527,23 +526,17 @@ auto HcStoreWidget::HttpGet(
     const std::string& url,
     const std::string& authorization
 ) -> std::optional<std::string> {
-    auto _url   = QUrl( url.c_str() );
-    auto client = httplib::Client( _url.scheme().toStdString() + "://" + _url.host().toStdString() );
-    auto result = httplib::Result();
+    auto base64  = std::string();
+    auto headers = json::array();
 
     if ( ! authorization.empty() ) {
-        auto base64 = QByteArray( authorization.c_str() ).toBase64().toStdString();
-        client.set_default_headers( {
-            { "Authorization", std::format( "Basic {}", base64 ) }
-        } );
+        base64  = QByteArray::fromStdString( authorization ).toBase64().toStdString();
+        headers = {
+            { { "Authorization", std::format( "Basic {}", base64 ) } },
+        };
     }
 
-    result = client.Get( _url.path().toStdString() );
+    auto [status, response, _] = Havoc->RequestSend( url, "", false, "GET", "", false, headers );
 
-    if ( HttpErrorToString( result.error() ).has_value() ) {
-        spdlog::error( "AddPlugin error: failed to send plugin add request: {}", HttpErrorToString( result.error() ).value() );
-        return std::nullopt;
-    }
-
-    return result->status != 404 ? std::optional( result->body ) : std::nullopt;
+    return status != 404 ? response : std::nullopt;
 }

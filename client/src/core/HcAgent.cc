@@ -179,43 +179,37 @@ auto HcAgent::post() -> void
 }
 
 auto HcAgent::remove() -> void {
-    auto result = httplib::Result();
+    auto [status, response] = Havoc->ApiSend( "/api/agent/remove", { { "uuid", uuid } } );
 
     spdlog::debug( "agent::remove {}", uuid );
 
-    result = Havoc->ApiSend( "/api/agent/remove", { { "uuid", uuid } } );
-
-    if ( result->status != 200 ) {
+    if ( status != 200 ) {
         Helper::MessageBox(
             QMessageBox::Critical,
             "agent removal failure",
-            std::format( "failed to remove agent {}: {}", uuid, result->body )
+            std::format( "failed to remove agent {}: {}", uuid, response )
         );
 
-        spdlog::error( "failed to remove agent {}: {}", uuid, result->body );
+        spdlog::error( "failed to remove agent {}: {}", uuid, response );
     }
 }
 
 auto HcAgent::hide() -> void {
-    auto result = httplib::Result();
-
-    spdlog::debug( "agent::hide {}", uuid );
-
-    result = Havoc->ApiSend( "/api/agent/hide", {
+    auto [status, response] = Havoc->ApiSend( "/api/agent/hide", {
         { "uuid", uuid },
         { "hide", true }
     } );
 
-    if ( result->status != 200 ) {
+    spdlog::debug( "agent::hide {}", uuid );
+
+    if ( status != 200 ) {
         Helper::MessageBox(
             QMessageBox::Critical,
             "agent hide failure",
-            std::format( "failed to hide agent {}: {}", uuid, result->body )
+            std::format( "failed to hide agent {}: {}", uuid, response )
         );
 
-        spdlog::error( "failed to hide agent {}: {}", uuid, result->body );
-
-        return;
+        spdlog::error( "failed to hide agent {}: {}", uuid, response );
     }
 }
 

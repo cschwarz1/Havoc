@@ -152,9 +152,9 @@ auto HcDialogBuilder::AddBuilder(
     Builders.push_back( builder );
 }
 
-auto HcDialogBuilder::PressedGenerate() -> void
-{
-    auto result = httplib::Result();
+auto HcDialogBuilder::PressedGenerate(
+    void
+) -> void {
     auto data   = json();
     auto body   = json();
     auto config = json();
@@ -235,173 +235,170 @@ auto HcDialogBuilder::PressedGenerate() -> void
             { "config", config },
         };
 
-        //
-        // TODO: Need a worker thread here for HTTP requests
-        //
-        if ( ( result = Havoc->ApiSend( "/api/agent/build", data ) ) ) {
-            if ( result->status != 200 ) {
-                if ( ( data = json::parse( result->body ) ).is_discarded() ) {
-                    goto ERROR_SERVER_RESPONSE;
-                }
+        auto [status_code, response] = Havoc->ApiSend( "/api/agent/build", data );
 
-                if ( ! data.contains( "error" ) ) {
-                    goto ERROR_SERVER_RESPONSE;
-                }
+        if ( status_code != 200 ) {
+            if ( ( data = json::parse( response ) ).is_discarded() ) {
+                goto ERROR_SERVER_RESPONSE;
+            }
 
-                if ( ! data[ "error" ].is_string() ) {
-                    goto ERROR_SERVER_RESPONSE;
-                }
+            if ( ! data.contains( "error" ) ) {
+                goto ERROR_SERVER_RESPONSE;
+            }
 
-                Helper::MessageBox(
-                    QMessageBox::Critical,
-                    "Payload build failure",
-                    QString( "Failed to build payload \"%1\": %2" ).arg( name.c_str() ).arg( data[ "error" ].get<std::string>().c_str() ).toStdString()
-                );
-            } else {
-                auto dialog  = QFileDialog();
-                auto path    = QString();
-                auto file    = QFile();
-                auto payload = QByteArray();
-                auto context = json();
+            if ( ! data[ "error" ].is_string() ) {
+                goto ERROR_SERVER_RESPONSE;
+            }
 
-                if ( ( data = json::parse( result->body ) ).is_discarded() ) {
-                    goto ERROR_SERVER_RESPONSE;
-                }
+            Helper::MessageBox(
+                QMessageBox::Critical,
+                "Payload build failure",
+                QString( "Failed to build payload \"%1\": %2" ).arg( name.c_str() ).arg( data[ "error" ].get<std::string>().c_str() ).toStdString()
+            );
+        } else {
+            auto dialog  = QFileDialog();
+            auto path    = QString();
+            auto file    = QFile();
+            auto payload = QByteArray();
+            auto context = json();
 
-                //
-                // get the file name of the generated implant
-                //
-                if ( data.contains( "filename" ) ) {
-                    if ( data[ "filename" ].is_string() ) {
-                        name = data[ "filename" ].get<std::string>();
-                    } else {
-                        Helper::MessageBox(
-                            QMessageBox::Critical,
-                            "Payload build error",
-                            "invalid response: payload file name is not a string"
-                        );
-                        return;
-                    }
+            if ( ( data = json::parse( response ) ).is_discarded() ) {
+                goto ERROR_SERVER_RESPONSE;
+            }
+
+            //
+            // get the file name of the generated implant
+            //
+            if ( data.contains( "filename" ) ) {
+                if ( data[ "filename" ].is_string() ) {
+                    name = data[ "filename" ].get<std::string>();
                 } else {
                     Helper::MessageBox(
                         QMessageBox::Critical,
                         "Payload build error",
-                        "invalid response: payload file name not specified"
+                        "invalid response: payload file name is not a string"
                     );
                     return;
                 }
-
-                //
-                // get the payload data of the generated implant
-                //
-                if ( data.contains( "payload" ) ) {
-                    if ( data[ "payload" ].is_string() ) {
-                        payload = QByteArray::fromBase64( data[ "payload" ].get<std::string>().c_str() );
-                    }  else {
-                        Helper::MessageBox(
-                            QMessageBox::Critical,
-                            "Payload build error",
-                            "invalid response: payload data is not a string"
-                        );
-                        return;
-                    }
-                }  else {
-                    Helper::MessageBox(
-                        QMessageBox::Critical,
-                        "Payload build error",
-                        "invalid response: payload data not specified"
-                    );
-                    return;
-                }
-
-                //
-                // get the payload context of the generated implant
-                //
-                if ( data.contains( "context" ) ) {
-                    if ( data[ "context" ].is_object() ) {
-                        context = data[ "context" ].get<json>();
-                    }  else {
-                        Helper::MessageBox(
-                            QMessageBox::Critical,
-                            "Payload build error",
-                            "invalid response: payload context is not an object"
-                        );
-                        return;
-                    }
-                }  else {
-                    Helper::MessageBox(
-                        QMessageBox::Critical,
-                        "Payload build error",
-                        "invalid response: payload context not specified"
-                    );
-                    return;
-                }
-
-                //
-                // process payload by passing it to python builder instance
-                // we are also creating a scope for it so the gil can be released
-                // at the end of the scope after finishing interacting with the
-                // python builder instance
-                //
-                {
-                    HcPythonAcquire();
-
-                    try {
-                        //
-                        // do some post payload processing after retrieving
-                        // the payload from the remote server plus the entire
-                        // configuration we have to include into the payload
-                        //
-                        auto processed = builder.attr( "payload_process" )(
-                            py11::bytes( payload.toStdString().c_str(), payload.toStdString().length() ),
-                            context
-                        ).cast<std::string>();
-
-                        //
-                        // set the payload from the processed value we retrieved
-                        // back from the python builder instance
-                        //
-                        payload = QByteArray( processed.c_str(), processed.length() );
-                    } catch ( py11::error_already_set &eas ) {
-                        spdlog::error( "failed to process payload \"{}\": \n{}", name, eas.what() );
-
-                        Helper::MessageBox(
-                            QMessageBox::Critical,
-                            "Payload build failure",
-                            std::format( "failed to process payload \"{}\": \n{}", name, eas.what() )
-                        );
-                        return;
-                    }
-                }
-
-                dialog.setStyleSheet( Havoc->StyleSheet() );
-                dialog.setDirectory( QDir::homePath() );
-                dialog.selectFile( name.c_str() );
-                dialog.setAcceptMode( QFileDialog::AcceptSave );
-
-                if ( dialog.exec() == QFileDialog::Accepted ) {
-                    path = dialog.selectedFiles().value( 0 );
-
-                    file.setFileName( path );
-                    if ( file.open( QIODevice::ReadWrite ) ) {
-                        file.write( payload );
-
-                        Helper::MessageBox(
-                            QMessageBox::Information,
-                            "Payload build",
-                            std::format( "saved payload under:\n{}", path.toStdString() )
-                        );
-                    } else {
-                        Helper::MessageBox(
-                            QMessageBox::Critical,
-                            "Payload build failure",
-                            std::format( "Failed to write payload to \"{}\": {}", path.toStdString(), file.errorString().toStdString() )
-                        );
-                    }
-                }
-
+            } else {
+                Helper::MessageBox(
+                    QMessageBox::Critical,
+                    "Payload build error",
+                    "invalid response: payload file name not specified"
+                );
                 return;
             }
+
+            //
+            // get the payload data of the generated implant
+            //
+            if ( data.contains( "payload" ) ) {
+                if ( data[ "payload" ].is_string() ) {
+                    payload = QByteArray::fromBase64( data[ "payload" ].get<std::string>().c_str() );
+                }  else {
+                    Helper::MessageBox(
+                        QMessageBox::Critical,
+                        "Payload build error",
+                        "invalid response: payload data is not a string"
+                    );
+                    return;
+                }
+            }  else {
+                Helper::MessageBox(
+                    QMessageBox::Critical,
+                    "Payload build error",
+                    "invalid response: payload data not specified"
+                );
+                return;
+            }
+
+            //
+            // get the payload context of the generated implant
+            //
+            if ( data.contains( "context" ) ) {
+                if ( data[ "context" ].is_object() ) {
+                    context = data[ "context" ].get<json>();
+                }  else {
+                    Helper::MessageBox(
+                        QMessageBox::Critical,
+                        "Payload build error",
+                        "invalid response: payload context is not an object"
+                    );
+                    return;
+                }
+            }  else {
+                Helper::MessageBox(
+                    QMessageBox::Critical,
+                    "Payload build error",
+                    "invalid response: payload context not specified"
+                );
+                return;
+            }
+
+            //
+            // process payload by passing it to python builder instance
+            // we are also creating a scope for it so the gil can be released
+            // at the end of the scope after finishing interacting with the
+            // python builder instance
+            //
+            {
+                HcPythonAcquire();
+
+                try {
+                    //
+                    // do some post payload processing after retrieving
+                    // the payload from the remote server plus the entire
+                    // configuration we have to include into the payload
+                    //
+                    auto processed = builder.attr( "payload_process" )(
+                        py11::bytes( payload.toStdString().c_str(), payload.toStdString().length() ),
+                        context
+                    ).cast<std::string>();
+
+                    //
+                    // set the payload from the processed value we retrieved
+                    // back from the python builder instance
+                    //
+                    payload = QByteArray( processed.c_str(), processed.length() );
+                } catch ( py11::error_already_set &eas ) {
+                    spdlog::error( "failed to process payload \"{}\": \n{}", name, eas.what() );
+
+                    Helper::MessageBox(
+                        QMessageBox::Critical,
+                        "Payload build failure",
+                        std::format( "failed to process payload \"{}\": \n{}", name, eas.what() )
+                    );
+                    return;
+                }
+            }
+
+            dialog.setStyleSheet( Havoc->StyleSheet() );
+            dialog.setDirectory( QDir::homePath() );
+            dialog.selectFile( name.c_str() );
+            dialog.setAcceptMode( QFileDialog::AcceptSave );
+
+            if ( dialog.exec() == QFileDialog::Accepted ) {
+                path = dialog.selectedFiles().value( 0 );
+
+                file.setFileName( path );
+                if ( file.open( QIODevice::ReadWrite ) ) {
+                    file.write( payload );
+
+                    Helper::MessageBox(
+                        QMessageBox::Information,
+                        "Payload build",
+                        std::format( "saved payload under:\n{}", path.toStdString() )
+                    );
+                } else {
+                    Helper::MessageBox(
+                        QMessageBox::Critical,
+                        "Payload build failure",
+                        std::format( "Failed to write payload to \"{}\": {}", path.toStdString(), file.errorString().toStdString() )
+                    );
+                }
+            }
+
+            return;
         }
 
     } else {

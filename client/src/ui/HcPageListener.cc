@@ -553,20 +553,19 @@ auto HcPageListener::getListener(
 
 auto HcListener::stop() -> std::optional<std::string>
 {
-    auto result = httplib::Result();
-    auto error  = std::string();
-    auto data   = json();
+    auto error = std::string();
+    auto data  = json();
 
-    result = Havoc->ApiSend( "/api/listener/stop", {
+    auto [status, response] = Havoc->ApiSend( "/api/listener/stop", {
         { "name", name }
     } );
 
-    if ( result->status != 200 ) {
-        if ( result->body.empty() ) {
+    if ( status != 200 ) {
+        if ( response.empty() ) {
             goto ERROR_SERVER_RESPONSE;
         }
 
-        if ( ( data = json::parse( result->body ) ).is_discarded() ) {
+        if ( ( data = json::parse( response ) ).is_discarded() ) {
             goto ERROR_SERVER_RESPONSE;
         }
 
@@ -589,21 +588,20 @@ ERROR_SERVER_RESPONSE:
 
 auto HcListener::start() -> std::optional<std::string>
 {
-    auto result = httplib::Result();
-    auto error  = std::string();
-    auto data   = json();
+    auto error = std::string();
+    auto data  = json();
 
-    result = Havoc->ApiSend( "/api/listener/start", {
+    auto [status, response] = Havoc->ApiSend( "/api/listener/start", {
         { "name",     name     },
         { "protocol", protocol }
     } );
 
-    if ( result->status != 200 ) {
-        if ( result->body.empty() ) {
+    if ( status != 200 ) {
+        if ( response.empty() ) {
             goto ERROR_SERVER_RESPONSE;
         }
 
-        if ( ( data = json::parse( result->body ) ).is_discarded() ) {
+        if ( ( data = json::parse( response ) ).is_discarded() ) {
             goto ERROR_SERVER_RESPONSE;
         }
 
@@ -626,56 +624,19 @@ ERROR_SERVER_RESPONSE:
 
 auto HcListener::restart() -> std::optional<std::string>
 {
-    auto result = httplib::Result();
-    auto error  = std::string();
-    auto data   = json();
+    auto error = std::string();
+    auto data  = json();
 
-    result = Havoc->ApiSend( "/api/listener/restart", {
+    auto [status, response] = Havoc->ApiSend( "/api/listener/restart", {
         { "name", name }
     } );
 
-    if ( result->status != 200 ) {
-        if ( result->body.empty() ) {
+    if ( status != 200 ) {
+        if ( response.empty() ) {
             goto ERROR_SERVER_RESPONSE;
         }
 
-        if ( ( data = json::parse( result->body ) ).is_discarded() ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-
-        if ( ! data.contains( "error" ) ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-
-        if ( ! data[ "error" ].is_string() ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-
-        return data[ "error" ].get<std::string>();
-    }
-
-    return {};
-
-ERROR_SERVER_RESPONSE:
-    return std::optional<std::string>( "invalid response from the server" );
-}
-
-auto HcListener::remove() -> std::optional<std::string>
-{
-    auto result = httplib::Result();
-    auto error  = std::string();
-    auto data   = json();
-
-    result = Havoc->ApiSend( "/api/listener/remove", {
-        { "name", name }
-    } );
-
-    if ( result->status != 200 ) {
-        if ( result->body.empty() ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-
-        if ( ( data = json::parse( result->body ) ).is_discarded() ) {
+        if ( ( data = json::parse( response ) ).is_discarded() ) {
             goto ERROR_SERVER_RESPONSE;
         }
 
@@ -698,27 +659,24 @@ ERROR_SERVER_RESPONSE:
 
 auto HcListener::edit() -> std::optional<std::string>
 {
-    auto result   = httplib::Result();
+    auto listener = new HcListenerDialog( protocol.c_str() );
     auto error    = std::string();
     auto data     = json();
-    auto listener = new HcListenerDialog( protocol.c_str() );
 
     //
     // first we have to get the
     // config from the listener
     //
 
-    result = Havoc->ApiSend( "/api/listener/config", {
-        { "name", name }
-    } );
+    auto [status, response] = Havoc->ApiSend( "/api/listener/config", { { "name", name } } );
 
-    if ( result->status != 200 ) {
-        if ( result->body.empty() ) {
+    if ( status != 200 ) {
+        if ( response.empty() ) {
             goto ERROR_SERVER_RESPONSE;
         }
 
         try {
-            if ( ( data = json::parse( result->body ) ).is_discarded() ) {
+            if ( ( data = json::parse( response ) ).is_discarded() ) {
                 goto ERROR_SERVER_RESPONSE;
             }
         } catch ( std::exception& e ) {
@@ -737,7 +695,7 @@ auto HcListener::edit() -> std::optional<std::string>
         return data[ "error" ].get<std::string>();
     } else {
         try {
-            if ( ( data = json::parse( result->body ) ).is_discarded() ) {
+            if ( ( data = json::parse( response ) ).is_discarded() ) {
                 goto ERROR_SERVER_RESPONSE;
             }
         } catch ( std::exception& e ) {
@@ -756,6 +714,41 @@ auto HcListener::edit() -> std::optional<std::string>
 
     if ( listener->getCloseState() != Closed ) {
         delete listener;
+    }
+
+    return {};
+
+ERROR_SERVER_RESPONSE:
+    return std::optional<std::string>( "invalid response from the server" );
+}
+
+auto HcListener::remove() -> std::optional<std::string>
+{
+    auto error = std::string();
+    auto data  = json();
+
+    auto [status, response] = Havoc->ApiSend( "/api/listener/remove", {
+        { "name", name }
+    } );
+
+    if ( status != 200 ) {
+        if ( response.empty() ) {
+            goto ERROR_SERVER_RESPONSE;
+        }
+
+        if ( ( data = json::parse( response ) ).is_discarded() ) {
+            goto ERROR_SERVER_RESPONSE;
+        }
+
+        if ( ! data.contains( "error" ) ) {
+            goto ERROR_SERVER_RESPONSE;
+        }
+
+        if ( ! data[ "error" ].is_string() ) {
+            goto ERROR_SERVER_RESPONSE;
+        }
+
+        return data[ "error" ].get<std::string>();
     }
 
     return {};

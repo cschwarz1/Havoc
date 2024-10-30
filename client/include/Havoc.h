@@ -3,7 +3,6 @@
 
 #include <Common.h>
 #include <Events.h>
-#include <QSplashScreen>
 
 class HcMainWindow;
 
@@ -30,10 +29,15 @@ class HcMainWindow;
 #define HAVOC_VERSION  "1.0"
 #define HAVOC_CODENAME "King Of The Damned"
 
-template <typename T>
-struct HcWorker {
-    QThread* Thread;
-    T*       Worker;
+template <class HcTypeWorker>
+class HcWorker {
+public:
+    QThread*      Thread;
+    HcTypeWorker* Worker;
+
+    inline explicit HcWorker() : Thread( new QThread ), Worker( new HcTypeWorker ) {
+        static_cast<QThread*>( Worker )->moveToThread( Thread );
+    }
 };
 
 class HavocClient : public QWidget {
@@ -78,12 +82,8 @@ private:
         std::string Port;
         std::string User;
         std::string Pass;
-
-        //
-        // login token to interact
-        // with the api endpoints
-        //
         std::string Token;
+        std::string SslHash;
     } Profile;
 
     HcWorker<HcEventWorker>     Events;
@@ -98,6 +98,7 @@ private:
     std::vector<ActionObject*> actions   = {};
 
     QDir client_dir = {};
+
 public:
     HcMainWindow*  Gui    = {};
     QSplashScreen* splash = {};
@@ -117,27 +118,43 @@ public:
     ) -> void;
 
     /* exit application and free resources */
-    static auto Exit() -> void;
+    static auto Exit(
+        void
+    ) -> void;
 
     /* get server address */
-    auto Server() const -> std::string;
+    auto Server(
+        void
+    ) const -> std::string;
 
     /* get server connection token */
-    auto Token() const -> std::string;
+    auto Token(
+        void
+    ) const -> std::string;
 
-    static auto StyleSheet() -> QByteArray;
+    static auto StyleSheet(
+        void
+    ) -> QByteArray;
 
-    auto SetupThreads() -> void;
+    auto SetupThreads(
+        void
+    ) -> void;
 
-    auto SetupDirectory() -> bool;
+    auto SetupDirectory(
+        void
+    ) -> bool;
 
-    inline auto directory() -> QDir { return client_dir; };
+    inline auto directory(
+        void
+    ) -> QDir { return client_dir; };
 
     //
     // Callbacks
     //
 
-    auto Callbacks() -> std::vector<std::string>;
+    auto Callbacks(
+        void
+    ) -> std::vector<std::string>;
 
     auto AddCallbackObject(
         const std::string&  uuid,
@@ -156,7 +173,9 @@ public:
     // Listeners
     //
 
-    auto Listeners() -> std::vector<std::string>;
+    auto Listeners(
+        void
+    ) -> std::vector<std::string>;
 
     auto ListenerObject(
         const std::string& name
@@ -174,7 +193,9 @@ public:
     // Protocols
     //
 
-    auto Protocols() -> std::vector<std::string>;
+    auto Protocols(
+        void
+    ) -> std::vector<std::string>;
 
     auto AddProtocol(
         const std::string&  name,
@@ -207,7 +228,9 @@ public:
         const std::string& uuid
     ) const -> std::optional<HcAgent*>;
 
-    auto Agents() const -> std::vector<HcAgent*>;
+    auto Agents(
+        void
+    ) const -> std::vector<HcAgent*>;
 
     auto AddAgentObject(
         const std::string&  type,
@@ -236,13 +259,16 @@ public:
 
     auto ApiLogin(
         const json& data
-    ) -> std::optional<std::string>;
+    ) -> std::tuple<
+        std::optional<std::string>,
+        std::optional<std::string>
+    >;
 
     auto ApiSend(
         const std::string& endpoint,
         const json&        body,
         const bool         keep_alive = false
-    ) const -> httplib::Result;
+    ) -> std::tuple<int, std::string>;
 
     auto ServerPullPlugins(
         void
@@ -253,6 +279,20 @@ public:
         const std::string& version,
         const std::string& resource
     ) -> bool;
+
+    auto RequestSend(
+        const std::string&   url,
+        const std::string&   data,
+        const bool           keep_alive   = false,
+        const std::string&   method       = "POST",
+        const std::string&   content_type = "application/json",
+        const bool           havoc_token  = true,
+        const json::array_t& headers      = {}
+    ) -> std::tuple<
+        int,
+        std::optional<std::string>,
+        std::string
+    >;
 
     //
     // Scripts Manager
@@ -280,9 +320,5 @@ Q_SIGNALS:
 
 /* a global Havoc app instance */
 extern HavocClient* Havoc;
-
-auto HttpErrorToString(
-    const httplib::Error& error
-) -> std::optional<std::string>;
 
 #endif //HAVOCCLIENT_HAVOC_H

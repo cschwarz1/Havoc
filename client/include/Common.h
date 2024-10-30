@@ -13,7 +13,6 @@
 #include <toml.hpp>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
-#include <httplib.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
@@ -31,6 +30,11 @@
 #include <QThread>
 #include <QMenu>
 #include <QtConcurrent/QtConcurrent>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QSplashScreen>
+#include <QtCore5Compat/QTextCodec>
+#include <QTimer>
 
 /* define namepsace */
 using     json = nlohmann::json;

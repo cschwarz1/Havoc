@@ -6,24 +6,20 @@ auto HcServerApiSend(
     const std::string& endpoint,
     const json&        data
 ) -> json {
-    auto result = httplib::Result();
-    auto body   = json();
-
-    result = Havoc->ApiSend(
-        endpoint,
-        data
-    );
+    auto body               = json();
+    auto [status, response] = Havoc->ApiSend( endpoint, data );
 
     try {
-        body = json::parse( result->body );
+        if ( ( body = json::parse( response ) ).is_discarded() ) {
+            spdlog::debug( "server api processing json response has been discarded" );
+        }
     } catch ( std::exception& e ) {
         spdlog::error( "error while parsing body response from {}:\n{}", endpoint, e.what() );
     }
 
     return json {
-        { "status",  result->status  },
-        { "reason",  result->reason  },
-        { "body",    body },
+        { "status", status },
+        { "body",   body   },
     };
 }
 

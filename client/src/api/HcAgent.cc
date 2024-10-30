@@ -175,11 +175,10 @@ auto HcAgentExecute(
     const json&        data,
     const bool         wait
 ) -> json {
-    auto future   = QFuture<json>();
-    auto request  = json();
-    auto result   = httplib::Result();
-    auto response = json();
-    auto error    = std::string();
+    auto future  = QFuture<json>();
+    auto request = json();
+    auto object  = json();
+    auto error   = std::string();
 
     //
     // build request that is going to be
@@ -194,44 +193,44 @@ auto HcAgentExecute(
     //
     // send api request
     //
-    if ( ( result = Havoc->ApiSend( "/api/agent/execute", request, true ) ) ) {
-        //
-        // check for valid status response
-        //
-        if ( result->status != 200 ) {
-            spdlog::debug( "failed to send request: status code {}", result->status );
+    auto [status, response] = Havoc->ApiSend( "/api/agent/execute", request, true );
 
-            //
-            // check for emtpy request
-            //
-            if ( ! result->body.empty() ) {
-                if ( ( response = json::parse( result->body ) ).is_discarded() ) {
-                    response[ "error" ] = "failed to parse response";
-                };
-
-                if ( response[ "error" ].is_string() ) {
-                    return json {
-                        { "error", response[ "error" ].get<std::string>() }
-                    };
-                };
-            };
-
-            return json {
-                { "error", "failed to send request" }
-            };
-        };
+    //
+    // check for valid status response
+    //
+    if ( status != 200 ) {
+        spdlog::debug( "failed to send request: status code {}", status );
 
         //
         // check for emtpy request
         //
-        if ( ! result->body.empty() ) {
-            if ( ( response = json::parse( result->body ) ).is_discarded() ) {
-                response[ "error" ] = "failed to parse response";
+        if ( ! response.empty() ) {
+            if ( ( object = json::parse( response ) ).is_discarded() ) {
+                object[ "error" ] = "failed to parse response";
             };
+
+            if ( object[ "error" ].is_string() ) {
+                return json {
+                    { "error", object[ "error" ].get<std::string>() }
+                };
+            };
+        };
+
+        return json {
+            { "error", "failed to send request" }
         };
     };
 
-    return response;
+    //
+    // check for emtpy request
+    //
+    if ( ! response.empty() ) {
+        if ( ( object = json::parse( response ) ).is_discarded() ) {
+            object[ "error" ] = "failed to parse response";
+        };
+    };
+
+    return object;
 }
 
 /*!

@@ -43,7 +43,7 @@ public:
     auto sanityCheckInput() -> bool;
     auto retranslateUi() -> void;
     auto start() -> json;
-    auto pressedConnect() const -> bool;
+    auto connected() const -> bool;
 };
 
 QT_END_NAMESPACE

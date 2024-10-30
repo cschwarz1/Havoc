@@ -463,14 +463,15 @@ auto HcPageAgent::itemChanged(
             return;
         }
 
-        auto note   = agent_item->text().toStdString();
-        auto result = Havoc->ApiSend( "/api/agent/note", {
+        auto note               = agent_item->text().toStdString();
+        auto [status, response] = Havoc->ApiSend( "/api/agent/note", {
             { "uuid", agent_item->agent->uuid },
             { "note", note }
         } );
 
-        spdlog::debug( "result->status: {}", result->status );
-        spdlog::debug( "result->body  : {}", result->body );
+        if ( status != 200 ) {
+            spdlog::error( "failed to set the agent {} note: ({}) {}", agent_item->agent->uuid, status, response );
+        }
     }
 }
 
