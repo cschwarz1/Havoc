@@ -1109,7 +1109,24 @@ auto HavocClient::ProfileDelete(
     const std::string& type,
     const std::int32_t entry
 ) -> void {
+    auto array = toml::array();
+
     ProfileSync();
+
+    if ( !profile.contains( type ) ) {
+        return;
+    }
+
+    array = toml::find<toml::array>( profile, type );
+    if ( array.size() > entry ) {
+        array.erase( array.begin() + entry );
+    }
+
+    if ( array.empty() ) {
+        profile.as_table().erase( type );
+    } else {
+        profile[ type ] = array;
+    }
 
     ProfileSave();
 }

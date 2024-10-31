@@ -50,12 +50,14 @@ HcMarketPluginItem::HcMarketPluginItem(
     gridLayout = new QGridLayout( this );
     gridLayout->setObjectName( "gridLayout" );
 
-    auto policy = QSizePolicy( QSizePolicy::Maximum, QSizePolicy::Maximum );
     LabelName   = new QLabel( this );
     LabelName->setObjectName( "LabelName" );
+
+    auto policy = QSizePolicy( QSizePolicy::Maximum, QSizePolicy::Maximum );
     policy.setHorizontalStretch( 0 );
     policy.setVerticalStretch( 0 );
     policy.setHeightForWidth( LabelName->sizePolicy().hasHeightForWidth() );
+
     LabelName->setSizePolicy( policy );
 
     policy     = QSizePolicy( QSizePolicy::Maximum, QSizePolicy::Minimum );
