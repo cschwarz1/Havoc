@@ -17,25 +17,27 @@
 
 QT_BEGIN_NAMESPACE
 
-class HcConnectDialog : public QDialog
+class HcConnectDialog final : public QDialog
 {
     bool PressedConnect = false;
 
 public:
-    QGridLayout* gridLayout       = nullptr;
-    QHBoxLayout* horizontalLayout = nullptr;
-    QWidget*     ConnectionWidget = nullptr;
-    QLabel*      LabelHavoc       = nullptr;
-    HcLineEdit*  InputProfileName = nullptr;
-    HcLineEdit*  InputHost        = nullptr;
-    HcLineEdit*  InputPort        = nullptr;
-    HcLineEdit*  InputUsername    = nullptr;
-    HcLineEdit*  InputPassword    = nullptr;
-    QPushButton* ButtonConnect    = nullptr;
-    QPushButton* ButtonAdd        = nullptr;
-    QListWidget* ListConnection   = nullptr;
-    QAction*     ActionPassBlinder= nullptr;
-    bool         PassBlinderToggle= false;
+    QGridLayout* gridLayout        = {};
+    QHBoxLayout* horizontalLayout  = {};
+    QWidget*     ConnectionWidget  = {};
+    QHBoxLayout* TitleLayout       = {};
+    QLabel*      LabelImage        = {};
+    QLabel*      LabelHavoc        = {};
+    HcLineEdit*  InputProfileName  = {};
+    HcLineEdit*  InputHost         = {};
+    HcLineEdit*  InputPort         = {};
+    HcLineEdit*  InputUsername     = {};
+    HcLineEdit*  InputPassword     = {};
+    QPushButton* ButtonConnect     = {};
+    QPushButton* ButtonAdd         = {};
+    QListWidget* ListConnection    = {};
+    QAction*     ActionPassBlinder = {};
+    bool         PassBlinderToggle = false;
 
     explicit HcConnectDialog( );
     ~HcConnectDialog( ) override;

@@ -61,6 +61,8 @@ HcConnectDialog::HcConnectDialog() {
     horizontalLayout = new QHBoxLayout( this );
     ConnectionWidget = new QWidget( this );
     gridLayout       = new QGridLayout( ConnectionWidget );
+    TitleLayout      = new QHBoxLayout( ConnectionWidget );
+    LabelImage       = new QLabel( ConnectionWidget );
     LabelHavoc       = new QLabel( ConnectionWidget );
     InputProfileName = new HcLineEdit( ConnectionWidget );
     InputHost        = new HcLineEdit( ConnectionWidget );
@@ -75,6 +77,11 @@ HcConnectDialog::HcConnectDialog() {
     ConnectionWidget->setObjectName( QString::fromUtf8( "ConnectionWidget" ) );
 
     gridLayout->setObjectName( QString::fromUtf8( "gridLayout" ) );
+    TitleLayout->setObjectName( QString::fromUtf8( "TitleLayout" ) );
+
+    LabelImage->setObjectName( QString::fromUtf8( "LabelImage" ) );
+    LabelImage->setContentsMargins( 0, 0, 0, 5 );
+
     LabelHavoc->setObjectName( QString::fromUtf8( "LabelHavoc" ) );
     LabelHavoc->setMaximumSize( QSize( 200, 40 ) );
 
@@ -99,16 +106,21 @@ HcConnectDialog::HcConnectDialog() {
     ButtonConnect->setObjectName( QString::fromUtf8( "ButtonConnect" ) );
     ButtonConnect->setMinimumSize( QSize( 0, 30 ) );
     ButtonConnect->setProperty( "HcButton", "true" );
+    ButtonConnect->setFocusPolicy( Qt::NoFocus );
 
     ButtonAdd->setObjectName( QString::fromUtf8( "ButtonAdd" ) );
     ButtonAdd->setMinimumSize( QSize( 0, 30 ) );
     ButtonAdd->setProperty( "HcButton", "true" );
+    ButtonAdd->setFocusPolicy( Qt::NoFocus );
 
     ListConnection->setObjectName( QString::fromUtf8( "ListConnection" ) );
     ListConnection->setProperty( "HcListWidget", "half-dark" );
     ListConnection->setContextMenuPolicy( Qt::CustomContextMenu );
 
-    gridLayout->addWidget( LabelHavoc, 0, 0, 1, 2 );
+    TitleLayout->addWidget( LabelImage );
+    TitleLayout->addWidget( LabelHavoc );
+
+    gridLayout->addItem  ( TitleLayout, 0, 0, 1, 2 );
     gridLayout->addWidget( InputProfileName, 1, 0, 1, 2 );
     gridLayout->addWidget( InputHost, 2, 0, 1, 1 );
     gridLayout->addWidget( InputPort, 2, 1, 1, 1 );
@@ -119,8 +131,6 @@ HcConnectDialog::HcConnectDialog() {
 
     horizontalLayout->addWidget( ConnectionWidget );
     horizontalLayout->addWidget( ListConnection );
-
-    retranslateUi();
 
     /* add events to buttons */
     /* event when the "Connect" button is pressed/clicked.
@@ -168,6 +178,15 @@ HcConnectDialog::HcConnectDialog() {
         InputPassword->setInputText( widget->password );
     } );
 
+    connect( ListConnection, &QListWidget::itemDoubleClicked, this, [&] ( QListWidgetItem *item )  {
+        if ( ! item ) {
+            return;
+        }
+
+        emit ListConnection->itemClicked( item );
+        emit ButtonConnect->clicked();
+    } );
+
     connect( ListConnection, &QListWidget::customContextMenuRequested, this, [&] ( const QPoint& pos ) {
         auto menu = QMenu();
         auto item = ListConnection->itemAt( pos );
@@ -189,7 +208,7 @@ HcConnectDialog::HcConnectDialog() {
                 for ( const auto& connection : Havoc->ProfileQuery( "connection" ) ) {
                     auto name = std::string();
 
-                    if ( ! connection.contains( "name" ) ) {
+                    if ( !connection.contains( "name" ) ) {
                         continue;
                     }
 
@@ -231,7 +250,18 @@ HcConnectDialog::~HcConnectDialog() {
 void HcConnectDialog::retranslateUi() {
     setWindowTitle( QCoreApplication::translate( "HcConnectDialog", "Havoc Connect", nullptr ) );
     setStyleSheet( HavocClient::StyleSheet() );
-    LabelHavoc->setText( "<html><head/><body><p><span style=\" font-size:11pt;\">Havoc [ welcome back ]</span></p></body></html>" );
+
+    LabelImage->setPixmap( QPixmap( ":/icons/havoc-small" ) );
+    auto size = QSizePolicy( QSizePolicy::Maximum, QSizePolicy::Preferred );
+    size.setHorizontalStretch( 0 );
+    size.setVerticalStretch( 0 );
+    size.setHeightForWidth( LabelImage->sizePolicy().hasHeightForWidth() );
+    LabelImage->setSizePolicy( size );
+
+    LabelHavoc->setText(
+        "<html><head/><body><p><span style=\"font-size:11pt;\">Havoc Framework</span></p></body></html>"
+    );
+
     ButtonConnect->setText( QCoreApplication::translate( "HcConnectDialog", "CONNECT", nullptr ) );
     ButtonAdd->setText( QCoreApplication::translate( "HcConnectDialog", "NEW", nullptr ) );
 
@@ -300,6 +330,7 @@ void HcConnectDialog::retranslateUi() {
         );
 
         item->setSizeHint( widget->sizeHint() );
+        widget->setFocusPolicy( Qt::NoFocus );
 
         ListConnection->addItem( item );
         ListConnection->setItemWidget( item, widget );

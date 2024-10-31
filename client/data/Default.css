@@ -414,6 +414,16 @@ QListWidget[HcListWidget="dark"] {
     color: #f8f8f2;
 }
 
+QListWidget[HcListWidget="half-dark"]::item {
+    background   : #313342;
+    margin       : 3px;
+    border-radius: 3px;
+}
+
+QListWidget[HcListWidget="half-dark"]::item:selected {
+    background-color: #282A36;
+}
+
 QTextEdit[HcConsole="true"] {
     background-color: #282A36;
     color: #f8f8f2;

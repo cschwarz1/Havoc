@@ -6,6 +6,7 @@
 
     <qresource prefix="/icons">
         <file alias="havoc-white">../data/icons/havoc.png</file>
+        <file alias="havoc-small">../data/icons/havoc-small.png</file>
 
         <file alias="tab-close-button">../data/icons/close-icon.png</file>
 
