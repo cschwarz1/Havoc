@@ -338,6 +338,10 @@ public:
         const std::int32_t entry
     ) -> void;
 
+    auto ProfileDelete(
+        const std::string& type
+    ) -> void;
+
 Q_SIGNALS:
     auto eventHandle(
         const QByteArray& request

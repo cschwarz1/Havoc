@@ -1131,4 +1131,18 @@ auto HavocClient::ProfileDelete(
     ProfileSave();
 }
 
+auto HavocClient::ProfileDelete(
+    const std::string& type
+) -> void {
+    ProfileSync();
+
+    if ( !profile.contains( type ) ) {
+        return;
+    }
+
+    profile.as_table().erase( type );
+
+    ProfileSave();
+}
+
 HavocClient::ActionObject::ActionObject() {}

@@ -181,7 +181,7 @@ HcConnectDialog::HcConnectDialog() {
             auto action = menu.exec( ListConnection->viewport()->mapToGlobal( pos ) );
 
             if ( !action ) {
-                return; 
+                return;
             }
 
             if ( action->text() == "Remove" ) {
@@ -203,7 +203,9 @@ HcConnectDialog::HcConnectDialog() {
                     ++index;
                 }
             } else if ( action->text() == "Remove All" ) {
+                Havoc->ProfileDelete( "connection" );
 
+                retranslateUi();
             }
         }
     } );
