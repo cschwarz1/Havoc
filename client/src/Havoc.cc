@@ -46,7 +46,7 @@ auto HavocClient::Main(
     auto stylesheet = StyleSheet();
     auto found      = false;
     auto conn_entry = toml::value();
-    auto ssl_box    = QMessageBox();
+    auto message    = QMessageBox();
 
     if ( argc >= 2 ) {
         //
@@ -118,20 +118,20 @@ auto HavocClient::Main(
         }
     }
 
-    ssl_box.setStyleSheet( StyleSheet() );
+    message.setStyleSheet( StyleSheet() );
 
     if ( ! found ) {
         if ( ! ssl_hash.value().empty() ) {
-            ssl_box.setWindowTitle( "Verify SSL Fingerprint" );
-            ssl_box.setText( std::format(
+            message.setWindowTitle( "Verify SSL Fingerprint" );
+            message.setText( std::format(
                 "The team server's SSL fingerprint is: \n\n{}\n\nDoes this match the fingerprint presented in the server console?",
                 ssl_hash.value()
             ).c_str() );
-            ssl_box.setIcon( QMessageBox::Warning );
-            ssl_box.setStandardButtons( QMessageBox::Yes | QMessageBox::No );
-            ssl_box.setDefaultButton( QMessageBox::Yes );
+            message.setIcon( QMessageBox::Warning );
+            message.setStandardButtons( QMessageBox::Yes | QMessageBox::No );
+            message.setDefaultButton( QMessageBox::Yes );
 
-            if ( ssl_box.exec() == QMessageBox::No ) {
+            if ( message.exec() == QMessageBox::No ) {
                 return;
             }
         }
@@ -152,15 +152,15 @@ auto HavocClient::Main(
         //
         if ( conn_entry.contains( "ssl-hash" ) ) {
             if ( toml::find<std::string>( conn_entry, "ssl-hash" ) != ssl_hash.value() ) {
-                ssl_box.setIcon( QMessageBox::Critical );
-                ssl_box.setWindowTitle( "SSL Fingerprint" );
-                ssl_box.setText( std::format(
+                message.setIcon( QMessageBox::Critical );
+                message.setWindowTitle( "SSL Fingerprint" );
+                message.setText( std::format(
                     "SSL fingerprint verification failure \n\n{}\n\nwas expected from previous profile connection but received\n\n{}",
                     toml::find<std::string>( conn_entry, "ssl-hash" ),
                     ssl_hash.value()
                 ).c_str() );
-                ssl_box.setStandardButtons( QMessageBox::Ok );
-                ssl_box.exec();
+                message.setStandardButtons( QMessageBox::Ok );
+                message.exec();
 
                 return;
             }
@@ -168,13 +168,13 @@ auto HavocClient::Main(
             //
             // the profile connection seems incorrect or invalid... abort
             //
-            ssl_box.setIcon( QMessageBox::Critical );
-            ssl_box.setWindowTitle( "SSL Fingerprint" );
-            ssl_box.setText(
+            message.setIcon( QMessageBox::Critical );
+            message.setWindowTitle( "SSL Fingerprint" );
+            message.setText(
                 "SSL fingerprint verification failure \n\ncouldn't resolve and validate ssl fingerprint hash from previous connection"
             );
-            ssl_box.setStandardButtons( QMessageBox::Ok );
-            ssl_box.exec();
+            message.setStandardButtons( QMessageBox::Ok );
+            message.exec();
 
             return;
         }

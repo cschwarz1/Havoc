@@ -61,14 +61,15 @@ HcConnectDialog::HcConnectDialog() {
     horizontalLayout = new QHBoxLayout( this );
     ConnectionWidget = new QWidget( this );
     gridLayout       = new QGridLayout( ConnectionWidget );
-    TitleLayout      = new QHBoxLayout( ConnectionWidget );
-    LabelImage       = new QLabel( ConnectionWidget );
-    LabelHavoc       = new QLabel( ConnectionWidget );
-    InputProfileName = new HcLineEdit( ConnectionWidget );
+    TitleWidget      = new QWidget( ConnectionWidget );
+    TitleLayout      = new QHBoxLayout( TitleWidget );
+    LabelImage       = new QLabel( TitleWidget );
+    LabelHavoc       = new QLabel( TitleWidget );
+    InputName = new HcLineEdit( ConnectionWidget );
     InputHost        = new HcLineEdit( ConnectionWidget );
     InputPort        = new HcLineEdit( ConnectionWidget );
-    InputUsername    = new HcLineEdit( ConnectionWidget );
-    InputPassword    = new HcLineEdit( ConnectionWidget );
+    InputUser    = new HcLineEdit( ConnectionWidget );
+    InputPass    = new HcLineEdit( ConnectionWidget );
     ButtonConnect    = new QPushButton( ConnectionWidget );
     ButtonAdd        = new QPushButton( ConnectionWidget );
     ListConnection   = new QListWidget( this );
@@ -85,8 +86,8 @@ HcConnectDialog::HcConnectDialog() {
     LabelHavoc->setObjectName( QString::fromUtf8( "LabelHavoc" ) );
     LabelHavoc->setMaximumSize( QSize( 200, 40 ) );
 
-    InputProfileName->setObjectName( QString::fromUtf8( "InputProfileName" ) );
-    InputProfileName->setMinimumSize( QSize( 0, 30 ) );
+    InputName->setObjectName( QString::fromUtf8( "InputProfileName" ) );
+    InputName->setMinimumSize( QSize( 0, 30 ) );
 
     InputHost->setObjectName( QString::fromUtf8( "InputHost" ) );
     InputHost->setMinimumSize( QSize( 0, 30 ) );
@@ -95,13 +96,13 @@ HcConnectDialog::HcConnectDialog() {
     InputPort->setMinimumSize( QSize( 0, 30 ) );
     InputPort->setValidator( new QRegularExpressionValidator( QRegularExpression( "[0-9]*" ), InputPort ) );
 
-    InputUsername->setObjectName( QString::fromUtf8( "InputUsername" ) );
-    InputUsername->setMinimumSize( QSize( 0, 30 ) );
+    InputUser->setObjectName( QString::fromUtf8( "InputUsername" ) );
+    InputUser->setMinimumSize( QSize( 0, 30 ) );
 
-    InputPassword->setObjectName( QString::fromUtf8( "InputPassword" ) );
-    InputPassword->setMinimumSize( QSize( 0, 30 ) );
-    InputPassword->Input->setEchoMode( QLineEdit::Password );
-    ActionPassBlinder = InputPassword->Input->addAction( QIcon( ":/icons/16px-blind-white" ), QLineEdit::TrailingPosition );
+    InputPass->setObjectName( QString::fromUtf8( "InputPassword" ) );
+    InputPass->setMinimumSize( QSize( 0, 30 ) );
+    InputPass->Input->setEchoMode( QLineEdit::Password );
+    ActionPassBlinder = InputPass->Input->addAction( QIcon( ":/icons/16px-blind-white" ), QLineEdit::TrailingPosition );
 
     ButtonConnect->setObjectName( QString::fromUtf8( "ButtonConnect" ) );
     ButtonConnect->setMinimumSize( QSize( 0, 30 ) );
@@ -117,15 +118,17 @@ HcConnectDialog::HcConnectDialog() {
     ListConnection->setProperty( "HcListWidget", "half-dark" );
     ListConnection->setContextMenuPolicy( Qt::CustomContextMenu );
 
-    TitleLayout->addWidget( LabelImage );
-    TitleLayout->addWidget( LabelHavoc );
+    TitleLayout->addWidget( LabelImage  );
+    TitleLayout->addWidget( LabelHavoc  );
+    TitleWidget->setLayout( TitleLayout );
+    TitleWidget->setContentsMargins( 0, 0, 0, 0 );
 
-    gridLayout->addItem  ( TitleLayout, 0, 0, 1, 2 );
-    gridLayout->addWidget( InputProfileName, 1, 0, 1, 2 );
+    gridLayout->addWidget( TitleWidget, 0, 0, 1, 2 );
+    gridLayout->addWidget( InputName, 1, 0, 1, 2 );
     gridLayout->addWidget( InputHost, 2, 0, 1, 1 );
     gridLayout->addWidget( InputPort, 2, 1, 1, 1 );
-    gridLayout->addWidget( InputUsername, 3, 0, 1, 2 );
-    gridLayout->addWidget( InputPassword, 4, 0, 1, 2 );
+    gridLayout->addWidget( InputUser, 3, 0, 1, 2 );
+    gridLayout->addWidget( InputPass, 4, 0, 1, 2 );
     gridLayout->addWidget( ButtonConnect, 5, 0, 1, 1 );
     gridLayout->addWidget( ButtonAdd, 5, 1, 1, 1 );
 
@@ -143,21 +146,21 @@ HcConnectDialog::HcConnectDialog() {
     } );
 
     connect( ButtonAdd, &QPushButton::clicked, this, [&] {
-        InputProfileName->setInputText( "" );
+        InputName->setInputText( "" );
         InputHost->setInputText( "" );
         InputPort->setInputText( "" );
-        InputUsername->setInputText( "" );
-        InputPassword->setInputText( "" );
+        InputUser->setInputText( "" );
+        InputPass->setInputText( "" );
 
         ListConnection->clearSelection();
     } );
 
     connect( ActionPassBlinder, &QAction::triggered, this, [&] {
         if ( ! PassBlinderToggle ) {
-            InputPassword->Input->setEchoMode( QLineEdit::Normal );
+            InputPass->Input->setEchoMode( QLineEdit::Normal );
             ActionPassBlinder->setIcon( QIcon( ":/icons/16px-eye-white" ) );
         } else {
-            InputPassword->Input->setEchoMode( QLineEdit::Password );
+            InputPass->Input->setEchoMode( QLineEdit::Password );
             ActionPassBlinder->setIcon( QIcon( ":/icons/16px-blind-white" ) );
         }
 
@@ -171,11 +174,11 @@ HcConnectDialog::HcConnectDialog() {
 
         auto widget = dynamic_cast<HcConnectionItem*>( ListConnection->itemWidget( item ) );
 
-        InputProfileName->setInputText( widget->name );
+        InputName->setInputText( widget->name );
         InputHost->setInputText( widget->host );
         InputPort->setInputText( widget->port );
-        InputUsername->setInputText( widget->username );
-        InputPassword->setInputText( widget->password );
+        InputUser->setInputText( widget->username );
+        InputPass->setInputText( widget->password );
     } );
 
     connect( ListConnection, &QListWidget::itemDoubleClicked, this, [&] ( QListWidgetItem *item )  {
@@ -237,11 +240,11 @@ HcConnectDialog::~HcConnectDialog() {
     delete ConnectionWidget;
     delete gridLayout;
     delete LabelHavoc;
-    delete InputProfileName;
+    delete InputName;
     delete InputHost;
     delete InputPort;
-    delete InputUsername;
-    delete InputPassword;
+    delete InputUser;
+    delete InputPass;
     delete ButtonConnect;
     delete ButtonAdd;
     delete ListConnection;
@@ -259,17 +262,17 @@ void HcConnectDialog::retranslateUi() {
     LabelImage->setSizePolicy( size );
 
     LabelHavoc->setText(
-        "<html><head/><body><p><span style=\"font-size:11pt;\">Havoc Framework</span></p></body></html>"
+        "<html><head/><body><p><span style=\"font-size:13pt;\">Havoc Framework</span></p></body></html>"
     );
 
     ButtonConnect->setText( QCoreApplication::translate( "HcConnectDialog", "CONNECT", nullptr ) );
     ButtonAdd->setText( QCoreApplication::translate( "HcConnectDialog", "NEW", nullptr ) );
 
-    InputProfileName->setLabelText( "Profile:" );
+    InputName->setLabelText( "Profile:" );
     InputHost->setLabelText( "Host:   " );
-    InputPort->setLabelText( "Port:" );
-    InputUsername->setLabelText( "User:   " );
-    InputPassword->setLabelText( "Pass:   " );
+    InputPort->setLabelText( "Port:"    );
+    InputUser->setLabelText( "User:   " );
+    InputPass->setLabelText( "Pass:   " );
 
     //
     // add all connection details to the list
@@ -341,29 +344,29 @@ auto HcConnectDialog::start() -> json {
     retranslateUi();
     exec();
 
-    if ( InputProfileName->text().isEmpty() ||
+    if ( InputName->text().isEmpty() ||
          InputHost->text().isEmpty()        ||
          InputPort->text().isEmpty()        ||
-         InputUsername->text().isEmpty()    ||
-         InputPassword->text().isEmpty()    ||
+         InputUser->text().isEmpty()    ||
+         InputPass->text().isEmpty()    ||
          ! PressedConnect
     ) {
         return {};
     }
 
     return {
-        { "name",     InputProfileName->text().toStdString() },
-        { "host",     InputHost->text().toStdString()        },
-        { "port",     InputPort->text().toStdString()        },
-        { "username", InputUsername->text().toStdString()    },
-        { "password", InputPassword->text().toStdString()    },
+        { "name",     InputName->text().toStdString() },
+        { "host",     InputHost->text().toStdString() },
+        { "port",     InputPort->text().toStdString() },
+        { "username", InputUser->text().toStdString() },
+        { "password", InputPass->text().toStdString() },
     };
 }
 
 auto HcConnectDialog::sanityCheckInput(
     void
 ) -> bool {
-    if ( InputProfileName->text().isEmpty() ) {
+    if ( InputName->text().isEmpty() ) {
         Helper::MessageBox( QMessageBox::Critical, "Profile Error", "Profile field is emtpy." );
         return false;
     }
@@ -378,12 +381,12 @@ auto HcConnectDialog::sanityCheckInput(
         return false;
     }
 
-    if ( InputUsername->text().isEmpty() ) {
+    if ( InputUser->text().isEmpty() ) {
         Helper::MessageBox( QMessageBox::Critical, "Profile Error", "Username field is emtpy." );
         return false;
     }
 
-    if ( InputPassword->text().isEmpty() ) {
+    if ( InputPass->text().isEmpty() ) {
         Helper::MessageBox( QMessageBox::Critical, "Profile Error", "Password field is emtpy." );
         return false;
     }
@@ -392,6 +395,3 @@ auto HcConnectDialog::sanityCheckInput(
 }
 
 auto HcConnectDialog::connected() const -> bool { return PressedConnect; }
-
-
-
