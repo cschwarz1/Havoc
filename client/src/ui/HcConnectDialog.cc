@@ -65,11 +65,11 @@ HcConnectDialog::HcConnectDialog() {
     TitleLayout      = new QHBoxLayout( TitleWidget );
     LabelImage       = new QLabel( TitleWidget );
     LabelHavoc       = new QLabel( TitleWidget );
-    InputName = new HcLineEdit( ConnectionWidget );
+    InputName        = new HcLineEdit( ConnectionWidget );
     InputHost        = new HcLineEdit( ConnectionWidget );
     InputPort        = new HcLineEdit( ConnectionWidget );
-    InputUser    = new HcLineEdit( ConnectionWidget );
-    InputPass    = new HcLineEdit( ConnectionWidget );
+    InputUser        = new HcLineEdit( ConnectionWidget );
+    InputPass        = new HcLineEdit( ConnectionWidget );
     ButtonConnect    = new QPushButton( ConnectionWidget );
     ButtonAdd        = new QPushButton( ConnectionWidget );
     ListConnection   = new QListWidget( this );
