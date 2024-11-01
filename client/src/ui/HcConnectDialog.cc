@@ -235,20 +235,7 @@ HcConnectDialog::HcConnectDialog() {
     QMetaObject::connectSlotsByName( this );
 }
 
-HcConnectDialog::~HcConnectDialog() {
-    delete horizontalLayout;
-    delete ConnectionWidget;
-    delete gridLayout;
-    delete LabelHavoc;
-    delete InputName;
-    delete InputHost;
-    delete InputPort;
-    delete InputUser;
-    delete InputPass;
-    delete ButtonConnect;
-    delete ButtonAdd;
-    delete ListConnection;
-}
+HcConnectDialog::~HcConnectDialog() {}
 
 void HcConnectDialog::retranslateUi() {
     setWindowTitle( QCoreApplication::translate( "HcConnectDialog", "Havoc Connect", nullptr ) );

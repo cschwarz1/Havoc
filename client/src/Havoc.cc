@@ -80,6 +80,8 @@ auto HavocClient::Main(
         return;
     }
 
+    delete connector;
+
     //
     // login into the team server api
     //
