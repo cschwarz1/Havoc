@@ -25,18 +25,12 @@ void HcHeartbeatWorker::run() {
  */
 auto HcHeartbeatWorker::updateHeartbeats() -> void
 {
-    const auto format = QString( "dd-MMM-yyyy HH:mm:ss" );
+    const auto format = QString( "dd-MMM-yyyy HH:mm:ss t" );
 
     //
     // iterate over registered agents
     //
     for ( const auto& agent : Havoc->Agents() ) {
-        //
-        // TODO/FIX: if the teamserver and client are on two diff
-        //           timezones the heartbeat is going to look weird
-        //           and incorrect.
-        //
-
         //
         // parse the last called time, calculate the difference,
         // and get seconds, minutes, hours and days from it
@@ -44,25 +38,30 @@ auto HcHeartbeatWorker::updateHeartbeats() -> void
         auto last    = QDateTime::fromString( agent->last, format );
         auto current = QDateTime::currentDateTimeUtc();
         auto diff    = last.secsTo( current );
-        auto seconds = QDateTime::fromSecsSinceEpoch( diff ).toString( "s" );
-        auto minutes = QDateTime::fromSecsSinceEpoch( diff ).toString( "m" );
-        auto hours   = QDateTime::fromSecsSinceEpoch( diff ).toString( "h" );
-        auto days    = QDateTime::fromSecsSinceEpoch( diff ).toString( "d" );
-
-        // spdlog::debug( "{} : {}", last.toString().toStdString(), current.toString().toStdString() );
+        auto days    = diff / ( 24 * 3600 );
+        auto hours   = ( diff % ( 24 * 3600 ) ) / 3600;
+        auto minutes = ( diff % 3600 ) / 60;
+        auto seconds = diff % 60;
+        auto text    = std::string();
 
         //
         // update the table value
         //
+
         if ( diff < 60 ) {
-            agent->ui.table.Last->setText( QString( "%1s" ).arg( seconds ) );
+            text = std::format( "{}s", seconds );
         } else if ( diff < ( 60 * 60 ) ) {
-            agent->ui.table.Last->setText( QString( "%1m %2s" ).arg( minutes, seconds ) );
+            text = std::format( "{}m {}s", minutes, seconds );
         } else if ( diff < 24 * 60 * 60 ) {
-            agent->ui.table.Last->setText( QString( "%1h %2m" ).arg( hours, minutes ) );
+            text = std::format( "{}h {}m", hours, minutes );
         } else {
-            agent->ui.table.Last->setText( QString( "%1d %2h" ).arg( days, hours ) );
+            text = std::format( "{}d {}h", days, hours );
         }
+
+        // spdlog::debug( "{} (from {}) : {}", last.toString().toStdString(), agent->last.toStdString(), current.toString().toStdString() );
+        // spdlog::debug( "{} : {}", agent->uuid, text );
+
+        agent->ui.table.Last->setText( QString::fromStdString( text ) );
     }
 }
 

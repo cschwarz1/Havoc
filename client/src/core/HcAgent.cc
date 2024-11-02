@@ -181,9 +181,9 @@ auto HcAgent::post() -> void
 }
 
 auto HcAgent::remove() -> void {
-    auto [status, response] = Havoc->ApiSend( "/api/agent/remove", { { "uuid", uuid } } );
-
     spdlog::debug( "agent::remove {}", uuid );
+
+    auto [status, response] = Havoc->ApiSend( "/api/agent/remove", { { "uuid", uuid } } );
 
     if ( status != 200 ) {
         Helper::MessageBox(

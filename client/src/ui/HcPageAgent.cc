@@ -260,8 +260,10 @@ auto HcPageAgent::handleAgentMenu(
     auto uuid          = std::string();
     auto type          = std::string();
     auto agent         = std::optional<HcAgent*>();
+    auto item          = static_cast<QTableWidgetItem*>( nullptr );
     auto selections    = AgentTable->selectionModel()->selectedRows();
     auto agent_actions = Havoc->Actions( HavocClient::ActionObject::ActionAgent );
+    auto remove        = std::vector<HcAgent*>();
 
     /* check if we point to a session table item/agent */
     if ( ! AgentTable->itemAt( pos ) ) {
@@ -281,13 +283,10 @@ auto HcPageAgent::handleAgentMenu(
         //
         menu.addAction( QIcon( ":/icons/16px-agent-console" ), "Interact" );
         menu.addSeparator();
-        // menu.addAction( QIcon( ":/icons/16px-blind-white" ), "Hide" );
-
         menu.addAction(
             !show_hidden ? QIcon( ":/icons/16px-blind-white" ) : QIcon( ":/icons/16px-eye-white" ),
             !show_hidden ? "Hide" : "Un-Hide"
         );
-
         menu.addAction( QIcon( ":/icons/16px-remove" ), "Remove" );
     } else {
         //
@@ -334,9 +333,7 @@ auto HcPageAgent::handleAgentMenu(
             if ( action->text().compare( "Interact" ) == 0 ) {
                 spawnAgentConsole( uuid );
             } else if ( action->text().compare( "Remove" ) == 0 ) {
-                agent = Agent( uuid );
-
-                agent.value()->remove();
+                remove.push_back( Agent( uuid ).value() );
             } else if ( action->text().compare( "Hide" ) == 0 ) {
                 agent = Agent( uuid );
 
@@ -371,6 +368,15 @@ auto HcPageAgent::handleAgentMenu(
                 spdlog::debug( "[ERROR] invalid action from selected agent menu" );
             }
         }
+    }
+
+    //
+    // now remove all the agents that
+    // have been specified to remove
+    //
+
+    for ( const auto& _agent : remove ) {
+        _agent->remove();
     }
 }
 
