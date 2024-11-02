@@ -79,8 +79,8 @@ struct HcAgent {
     auto initialize() -> bool;
     auto post() -> void;
     auto remove() -> void;
-    auto hide() -> void;
-    auto unhide() -> void;
+    auto hide() const -> void;
+    auto unhide() const -> void;
     auto disconnected() -> void;
     auto unresponsive() -> void;
     auto healthy() -> void;

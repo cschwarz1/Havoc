@@ -198,12 +198,10 @@ auto HcAgent::remove() -> void {
 
 auto HcAgent::hide(
     void
-) -> void {
+) const -> void {
     const auto show_hidden = Havoc->Gui->PageAgent->show_hidden;
     const auto table       = Havoc->Gui->PageAgent->AgentTable;
     const auto row         = ui.table.Uuid->row();
-
-    spdlog::debug( "HcAgent::hide [show_hidden: {}] {}", show_hidden, hidden );
 
     if ( !show_hidden ) {
         table->hideRow( row );
@@ -218,12 +216,9 @@ auto HcAgent::hide(
 
 auto HcAgent::unhide(
     void
-) -> void {
-    const auto show_hidden = Havoc->Gui->PageAgent->show_hidden;
-    const auto table       = Havoc->Gui->PageAgent->AgentTable;
-    const auto row         = ui.table.Uuid->row();
-
-    spdlog::debug( "HcAgent::unhide [show_hidden: {}] {}", show_hidden, hidden );
+) const -> void {
+    const auto table = Havoc->Gui->PageAgent->AgentTable;
+    const auto row   = ui.table.Uuid->row();
 
     table->showRow( row );
 

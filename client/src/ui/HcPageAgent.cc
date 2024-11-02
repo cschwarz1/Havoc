@@ -281,7 +281,13 @@ auto HcPageAgent::handleAgentMenu(
         //
         menu.addAction( QIcon( ":/icons/16px-agent-console" ), "Interact" );
         menu.addSeparator();
-        menu.addAction( QIcon( ":/icons/16px-blind-white" ), "Hide" );
+        // menu.addAction( QIcon( ":/icons/16px-blind-white" ), "Hide" );
+
+        menu.addAction(
+            !show_hidden ? QIcon( ":/icons/16px-blind-white" ) : QIcon( ":/icons/16px-eye-white" ),
+            !show_hidden ? "Hide" : "Un-Hide"
+        );
+
         menu.addAction( QIcon( ":/icons/16px-remove" ), "Remove" );
     } else {
         //
@@ -333,6 +339,7 @@ auto HcPageAgent::handleAgentMenu(
                 agent.value()->remove();
             } else if ( action->text().compare( "Hide" ) == 0 ) {
                 agent = Agent( uuid );
+
 
                 agent.value()->hidden = true;
                 agent.value()->hide();
@@ -436,8 +443,6 @@ auto HcPageAgent::actionShowHidden(
 ) -> void {
     ActionShowHidden->setText( show_hidden ? "Show Hidden" : "Show All" );
     ActionShowHidden->setIcon( show_hidden ? QIcon( ":/icons/32px-blind-white" ) : QIcon( ":/icons/32px-eye-white" ) );
-
-    spdlog::debug( "show_hidden: {}", show_hidden );
 
     show_hidden = !show_hidden;
 
