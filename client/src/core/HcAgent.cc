@@ -23,6 +23,8 @@ auto HcAgent::initialize() -> bool {
     auto note    = QString();
     auto meta    = json();
 
+    hidden = false;
+
     if ( data.contains( "uuid" ) && data[ "uuid" ].is_string() ) {
         uuid = data[ "uuid" ].get<std::string>();
     } else {
@@ -194,22 +196,41 @@ auto HcAgent::remove() -> void {
     }
 }
 
-auto HcAgent::hide() -> void {
-    auto [status, response] = Havoc->ApiSend( "/api/agent/hide", {
-        { "uuid", uuid },
-        { "hide", true }
-    } );
+auto HcAgent::hide(
+    void
+) -> void {
+    const auto show_hidden = Havoc->Gui->PageAgent->show_hidden;
+    const auto table       = Havoc->Gui->PageAgent->AgentTable;
+    const auto row         = ui.table.Uuid->row();
 
-    spdlog::debug( "agent::hide {}", uuid );
+    spdlog::debug( "HcAgent::hide [show_hidden: {}] {}", show_hidden, hidden );
 
-    if ( status != 200 ) {
-        Helper::MessageBox(
-            QMessageBox::Critical,
-            "agent hide failure",
-            std::format( "failed to hide agent {}: {}", uuid, response )
-        );
+    if ( !show_hidden ) {
+        table->hideRow( row );
+    }
 
-        spdlog::error( "failed to hide agent {}: {}", uuid, response );
+    if ( hidden ) {
+        for ( int i = 0; i < table->columnCount(); i++ ) {
+            table->item( row, i )->setForeground( Havoc->Theme.getComment() );
+        }
+    }
+}
+
+auto HcAgent::unhide(
+    void
+) -> void {
+    const auto show_hidden = Havoc->Gui->PageAgent->show_hidden;
+    const auto table       = Havoc->Gui->PageAgent->AgentTable;
+    const auto row         = ui.table.Uuid->row();
+
+    spdlog::debug( "HcAgent::unhide [show_hidden: {}] {}", show_hidden, hidden );
+
+    table->showRow( row );
+
+    if ( !hidden ) {
+        for ( int i = 0; i < table->columnCount(); i++ ) {
+            table->item( row, i )->setForeground( Havoc->Theme.getForeground() );
+        }
     }
 }
 
@@ -221,7 +242,7 @@ auto HcAgent::disconnected(
     if ( ui.node->itemEdge() ) {
         ui.node->itemEdge()->setColor( Havoc->Theme.getComment() );
         ui.node->itemEdge()->setStatus(
-            AgentStatus::disconnected.c_str(),
+            QString::fromStdString( AgentStatus::disconnected ),
             Havoc->Theme.getRed()
         );
     }
@@ -235,7 +256,7 @@ auto HcAgent::unresponsive(
     if ( ui.node->itemEdge() ) {
         ui.node->itemEdge()->setColor( Havoc->Theme.getComment() );
         ui.node->itemEdge()->setStatus(
-            AgentStatus::unresponsive.c_str(),
+            QString::fromStdString( AgentStatus::unresponsive ),
             Havoc->Theme.getOrange()
         );
     }
@@ -245,4 +266,9 @@ auto HcAgent::healthy(
     void
 ) -> void {
     spdlog::debug( "agent::healthy {}", uuid );
+
+    if ( ui.node->itemEdge() ) {
+        ui.node->itemEdge()->setColor( parent.empty() ? Havoc->Theme.getGreen() : Havoc->Theme.getPurple() );
+        ui.node->itemEdge()->setStatus( QString(), QColor() );
+    }
 }

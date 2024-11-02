@@ -27,6 +27,7 @@
 
         <file alias="16px-blind">../data/icons/16px-blind.png</file>
         <file alias="16px-blind-white">../data/icons/16px-blind-white.png</file>
+        <file alias="32px-blind-white">../data/icons/32px-blind-white.png</file>
 
         <file alias="16px-eye">../data/icons/16px-eye.png</file>
         <file alias="16px-eye-white">../data/icons/16px-eye-white.png</file>

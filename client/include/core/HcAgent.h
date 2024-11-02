@@ -49,6 +49,7 @@ struct HcAgent {
     HcAgentConsole*             console;
     QString                     last;
     std::string                 status;
+    bool                        hidden;
 
     struct {
         HcSessionGraphItem* node;
@@ -79,6 +80,7 @@ struct HcAgent {
     auto post() -> void;
     auto remove() -> void;
     auto hide() -> void;
+    auto unhide() -> void;
     auto disconnected() -> void;
     auto unresponsive() -> void;
     auto healthy() -> void;

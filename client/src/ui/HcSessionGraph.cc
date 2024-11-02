@@ -512,7 +512,7 @@ auto HcSessionGraphScene::contextMenuEvent(
     //
     for ( const auto& _session : sessions ) {
         if ( ( _session->type() == HcSessionGraphItem::Type ) ) {
-            const auto session = static_cast<HcSessionGraphItem*>( _session );
+            const auto session = dynamic_cast<HcSessionGraphItem*>( _session );
 
             if ( session->agent() ) {
                 spdlog::debug( "session uuid: {}", session->agent()->uuid );

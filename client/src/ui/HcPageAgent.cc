@@ -122,8 +122,7 @@ HcPageAgent::HcPageAgent(
 
     AgentActionMenu  = new QMenu( this );
     ActionPayload    = AgentActionMenu->addAction( QIcon( ":/icons/16px-payload-build" ), "Payload Builder" );
-    ActionShowHidden = AgentActionMenu->addAction( QIcon( ":/icons/32px-eye-white" ), "Show Hidden" );
-    ActionShowHidden->setCheckable( true );
+    ActionShowHidden = AgentActionMenu->addAction( QIcon( ":/icons/32px-blind-white" ), "Show Hidden" );
 
     AgentActionButton = new QToolButton( this );
     AgentActionButton->setObjectName( "AgentActionButton" );
@@ -259,8 +258,9 @@ auto HcPageAgent::handleAgentMenu(
 ) -> void {
     auto menu          = QMenu( this );
     auto uuid          = std::string();
-    auto selections    = AgentTable->selectionModel()->selectedRows();
     auto type          = std::string();
+    auto agent         = std::optional<HcAgent*>();
+    auto selections    = AgentTable->selectionModel()->selectedRows();
     auto agent_actions = Havoc->Actions( HavocClient::ActionObject::ActionAgent );
 
     /* check if we point to a session table item/agent */
@@ -294,27 +294,30 @@ auto HcPageAgent::handleAgentMenu(
         //
         // add the registered agent type actions
         //
-        uuid = AgentTable->item( selections.at( 0 ).row(), 0 )->text().toStdString();
+        uuid  = AgentTable->item( selections.at( 0 ).row(), 0 )->text().toStdString();
+        agent = Agent( uuid );
 
-        for ( auto& agent : agents ) {
-            if ( agent->uuid == uuid ) {
-                type = agent->type;
-                break;
-            }
+        if ( !agent.has_value() ) {
+            return;
         }
 
-        for ( auto action : agent_actions ) {
+        type = agent.value()->type;
+
+        for ( const auto action : agent_actions ) {
             if ( action->agent.type == type ) {
                 if ( action->icon.empty() ) {
-                    menu.addAction( action->name.c_str() );
+                    menu.addAction( QString::fromStdString( action->name ) );
                 } else {
-                    menu.addAction( QIcon( action->icon.c_str() ), action->name.c_str() );
+                    menu.addAction( QIcon( QString::fromStdString( action->icon ) ), QString::fromStdString( action->name ) );
                 }
             }
         }
 
         menu.addSeparator();
-        menu.addAction( QIcon( ":/icons/16px-blind-white" ), "Hide" );
+        menu.addAction(
+            !agent.value()->hidden ? QIcon( ":/icons/16px-blind-white" ) : QIcon( ":/icons/16px-eye-white" ),
+            !agent.value()->hidden ? "Hide" : "Un-Hide"
+        );
         menu.addAction( QIcon( ":/icons/16px-remove" ), "Remove" );
     }
 
@@ -325,25 +328,31 @@ auto HcPageAgent::handleAgentMenu(
             if ( action->text().compare( "Interact" ) == 0 ) {
                 spawnAgentConsole( uuid );
             } else if ( action->text().compare( "Remove" ) == 0 ) {
-                auto agent = Agent( uuid ).value();
+                agent = Agent( uuid );
 
-                agent->remove();
+                agent.value()->remove();
             } else if ( action->text().compare( "Hide" ) == 0 ) {
-                auto agent = Agent( uuid ).value();
+                agent = Agent( uuid );
 
-                agent->hide();
+                agent.value()->hidden = true;
+                agent.value()->hide();
+            } else if ( action->text().compare( "Un-Hide" ) == 0 ) {
+                agent = Agent( uuid );
+
+                agent.value()->hidden = false;
+                agent.value()->unhide();
             } else {
-                for ( auto agent_action : agent_actions ) {
-                    if ( agent_action->name       == action->text().toStdString() &&
-                         agent_action->agent.type == type
+                for ( const auto _action : agent_actions ) {
+                    if ( _action->name       == action->text().toStdString() &&
+                         _action->agent.type == type
                     ) {
-                        auto agent = Havoc->Agent( uuid );
+                        agent = Havoc->Agent( uuid );
 
                         if ( agent.has_value() && agent.value()->interface.has_value() ) {
                             try {
                                 HcPythonAcquire();
 
-                                agent_action->callback( agent.value()->interface.value() );
+                                _action->callback( agent.value()->interface.value() );
                             } catch ( py11::error_already_set& e ) {
                                 spdlog::error( "failed to execute action callback: {}", e.what() );
                             }
@@ -425,7 +434,22 @@ auto HcPageAgent::Agent(
 auto HcPageAgent::actionShowHidden(
     bool checked
 ) -> void {
-    // TODO: show hidden
+    ActionShowHidden->setText( show_hidden ? "Show Hidden" : "Show All" );
+    ActionShowHidden->setIcon( show_hidden ? QIcon( ":/icons/32px-blind-white" ) : QIcon( ":/icons/32px-eye-white" ) );
+
+    spdlog::debug( "show_hidden: {}", show_hidden );
+
+    show_hidden = !show_hidden;
+
+    for ( const auto agent : agents ) {
+        if ( agent->hidden ) {
+            if ( show_hidden ) {
+                agent->unhide();
+            } else {
+                agent->hide();
+            }
+        }
+    }
 }
 
 auto HcPageAgent::actionPayloadBuilder(
@@ -435,7 +459,7 @@ auto HcPageAgent::actionPayloadBuilder(
 
     auto dialog = HcDialogBuilder();
 
-    QObject::connect( Havoc->Gui, &HcMainWindow::signalBuildLog, &dialog, &HcDialogBuilder::EventBuildLog );
+    connect( Havoc->Gui, &HcMainWindow::signalBuildLog, &dialog, &HcDialogBuilder::EventBuildLog );
 
     //
     // if there was an error while loading or executing

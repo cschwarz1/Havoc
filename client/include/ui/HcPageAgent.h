@@ -172,9 +172,10 @@ public:
     QTableWidgetItem*  TitleNote              = {};
     QTableWidgetItem*  TitleLastCallback      = {};
 
-    std::vector<HcAgent*> agents   = {};
-    int                   pivots   = {};
-    int                   elevated = {};
+    std::vector<HcAgent*> agents      = {};
+    int                   pivots      = {};
+    int                   elevated    = {};
+    bool                  show_hidden = false;
 
     explicit HcPageAgent(QWidget* parent = nullptr );
     ~HcPageAgent();
