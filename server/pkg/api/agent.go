@@ -279,8 +279,7 @@ func (api *ServerApi) agentRemove(ctx *gin.Context) {
 		goto ERROR
 	}
 
-	uuid, err = utils.MapKey[string](response, "uuid")
-	if err != nil {
+	if uuid, err = utils.MapKey[string](response, "uuid"); err != nil {
 		goto ERROR
 	}
 
@@ -342,14 +341,4 @@ ERROR:
 	ctx.JSON(http.StatusInternalServerError, gin.H{
 		"error": err.Error(),
 	})
-}
-
-func (api *ServerApi) agentHide(ctx *gin.Context) {
-	if !api.sanityCheck(ctx) {
-		ctx.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-
-	ctx.AbortWithStatus(http.StatusOK)
-	return
 }

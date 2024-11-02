@@ -300,35 +300,6 @@ func (db *Database) AgentDisabled(uuid string) (bool, error) {
 	return false, err
 }
 
-func (db *Database) AgentHidden(uuid string) (bool, error) {
-	var (
-		stmt   *sql.Stmt
-		err    error
-		hidden bool
-		exist  bool
-	)
-
-	if exist, err = db.AgentExists(uuid); err != nil {
-		return false, err
-	} else if !exist {
-		return false, errors.New("agent not exist")
-	}
-
-	stmt, err = db.sqlite.Prepare("SELECT hide FROM Agents WHERE uuid = ?")
-	if err != nil {
-		logger.DebugError("sqlite.Prepare failed: %v", err)
-		return false, err
-	}
-
-	err = stmt.QueryRow(uuid).Scan(&hidden)
-	if err != nil {
-		logger.DebugError("stmt.Query failed: %v", err)
-		return false, err
-	}
-
-	return hidden, err
-}
-
 func (db *Database) AgentSetStatus(uuid string, status string) error {
 	var (
 		stmt  *sql.Stmt
@@ -412,36 +383,6 @@ func (db *Database) AgentSetDisabled(uuid string, disabled bool) error {
 
 	// insert the data into the created sql statement
 	if _, err = stmt.Exec(disabled, uuid); err != nil {
-		logger.DebugError("stmt.Exec failed: %v", err)
-		return err
-	}
-
-	return err
-}
-
-func (db *Database) AgentSetHide(uuid string, hide bool) error {
-	var (
-		stmt  *sql.Stmt
-		err   error
-		exist bool
-	)
-
-	if exist, err = db.AgentExists(uuid); err != nil {
-		return err
-	} else if !exist {
-		return errors.New("agent not exist")
-	}
-
-	// create sql insert statement
-	if stmt, err = db.sqlite.Prepare(`
-        UPDATE Agents SET hide = ? WHERE uuid = ?
-    `); err != nil {
-		logger.DebugError("sqlite.Prepare failed: %v", err)
-		return err
-	}
-
-	// insert the data into the created sql statement
-	if _, err = stmt.Exec(hide, uuid); err != nil {
 		logger.DebugError("stmt.Exec failed: %v", err)
 		return err
 	}

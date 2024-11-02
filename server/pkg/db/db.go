@@ -56,8 +56,7 @@ func (db *Database) prepare() error {
 			"metadata"	BLOB NOT NULL,
 			"status"	TEXT,
 			"note"		TEXT,
-			"disabled"	INTEGER,
-			"hide"		INTEGER
+			"disabled"	INTEGER
 		)`,
 	); err != nil {
 		return err

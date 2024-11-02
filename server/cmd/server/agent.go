@@ -463,10 +463,6 @@ func (t *Teamserver) DatabaseAgentMetadata(uuid string) ([]byte, error) {
 	return t.database.AgentMetadata(uuid)
 }
 
-func (t *Teamserver) DatabaseAgentHidden(uuid string) (bool, error) {
-	return t.database.AgentHidden(uuid)
-}
-
 func (t *Teamserver) DatabaseAgentDisabled(uuid string) (bool, error) {
 	return t.database.AgentDisabled(uuid)
 }
@@ -481,10 +477,6 @@ func (t *Teamserver) DatabaseAgentSetNote(uuid string, note string) error {
 
 func (t *Teamserver) DatabaseAgentSetDisabled(uuid string, disabled bool) error {
 	return t.database.AgentSetDisabled(uuid, disabled)
-}
-
-func (t *Teamserver) DatabaseAgentSetHide(uuid string, hide bool) error {
-	return t.database.AgentSetHide(uuid, hide)
 }
 
 func (t *Teamserver) DatabaseAgentConsole(uuid string) ([]map[string]any, error) {

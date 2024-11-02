@@ -85,7 +85,6 @@ func NewServerApi(havoc pkg.IHavocCore) (*ServerApi, error) {
 	api.engine.POST("/api/agent/note", api.agentNote)
 	api.engine.POST("/api/agent/console", api.agentConsole)
 	api.engine.POST("/api/agent/remove", api.agentRemove)
-	api.engine.POST("/api/agent/hide", api.agentHide)
 
 	// plugin api endpoints
 	api.engine.POST("/api/plugin/list", api.pluginList)
