@@ -304,12 +304,12 @@ void HcConnectDialog::retranslateUi() {
             continue;
         }
 
-        auto item   = new QListWidgetItem;
         auto name   = toml::find<std::string>( connection, "name" );
         auto host   = toml::find<std::string>( connection, "host" );
         auto port   = toml::find<std::string>( connection, "port" );
         auto user   = toml::find<std::string>( connection, "username" );
         auto pass   = toml::find<std::string>( connection, "password" );
+        auto item   = new QListWidgetItem;
         auto widget = new HcConnectionItem(
             QString::fromStdString( name ),
             QString::fromStdString( host ),
@@ -332,11 +332,10 @@ auto HcConnectDialog::start() -> json {
     exec();
 
     if ( InputName->text().isEmpty() ||
-         InputHost->text().isEmpty()        ||
-         InputPort->text().isEmpty()        ||
-         InputUser->text().isEmpty()    ||
-         InputPass->text().isEmpty()    ||
-         ! PressedConnect
+         InputHost->text().isEmpty() ||
+         InputPort->text().isEmpty() ||
+         InputUser->text().isEmpty() ||
+         InputPass->text().isEmpty() || !PressedConnect
     ) {
         return {};
     }

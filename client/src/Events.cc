@@ -315,9 +315,9 @@ auto HavocClient::eventDispatch(
                     //      return
                     //
                     callback.value()(
-                            agent.value()->interface.value(),
-                            py11::bytes( pat.c_str(), pat.length() ),
-                            **py11::dict( ctx )
+                        agent.value()->interface.value(),
+                        py11::bytes( pat.c_str(), pat.length() ),
+                        **py11::dict( ctx )
                     );
                 } catch ( py11::error_already_set &eas ) {
                     //
