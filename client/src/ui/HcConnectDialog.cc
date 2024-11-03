@@ -198,7 +198,7 @@ HcConnectDialog::HcConnectDialog() {
             return;
         }
 
-        menu.setStyleSheet( HavocClient::StyleSheet() );
+        menu.setStyleSheet( HcApplication::StyleSheet() );
         menu.addAction( "Remove" );
         menu.addAction( "Remove All" );
 
@@ -241,7 +241,7 @@ HcConnectDialog::~HcConnectDialog() {}
 
 void HcConnectDialog::retranslateUi() {
     setWindowTitle( QCoreApplication::translate( "HcConnectDialog", "Havoc Connect", nullptr ) );
-    setStyleSheet( HavocClient::StyleSheet() );
+    setStyleSheet( HcApplication::StyleSheet() );
 
     LabelImage->setPixmap( QPixmap( ":/icons/havoc-small" ) );
     auto size = QSizePolicy( QSizePolicy::Maximum, QSizePolicy::Preferred );

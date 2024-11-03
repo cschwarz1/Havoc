@@ -267,9 +267,9 @@ auto HcAgentRegisterMenuAction(
     const std::string&  icon_path,
     const py11::object& callback
 ) -> void {
-    auto action = new HavocClient::ActionObject();
+    auto action = new HcApplication::ActionObject();
 
-    action->type       = HavocClient::ActionObject::ActionAgent;
+    action->type       = HcApplication::ActionObject::ActionAgent;
     action->name       = name;
     action->icon       = icon_path;
     action->callback   = callback;

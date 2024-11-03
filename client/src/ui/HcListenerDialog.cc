@@ -286,7 +286,7 @@ auto HcListenerChooseDialog::start(
 
     Dialog->setWindowTitle( "Listener Select" );
     Dialog->resize( 743, 378 );
-    Dialog->setStyleSheet( HavocClient::StyleSheet() );
+    Dialog->setStyleSheet( HcApplication::StyleSheet() );
 
     GridLayout    = new QGridLayout( Dialog );
     TableListener = new QTableWidget( Dialog );

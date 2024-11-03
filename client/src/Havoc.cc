@@ -1,7 +1,7 @@
 #include <Havoc.h>
 #include <vector>
 
-HavocClient::HavocClient() {
+HcApplication::HcApplication() {
     /* initialize logger */
     spdlog::set_pattern( "[%T %^%l%$] %v" );
     spdlog::info( "Havoc Framework [{} :: {}]", HAVOC_VERSION, HAVOC_CODENAME );
@@ -25,7 +25,7 @@ HavocClient::HavocClient() {
     QTimer::singleShot( 10, [&]() { QApplication::setFont( QFont( family, size ) ); } );
 }
 
-HavocClient::~HavocClient() = default;
+HcApplication::~HcApplication() = default;
 
 /*!
  * @brief
@@ -35,7 +35,7 @@ HavocClient::~HavocClient() = default;
  *  after connecting it is going to start an event thread
  *  and starting the Havoc MainWindow.
  */
-auto HavocClient::Main(
+auto HcApplication::Main(
     int    argc,
     char** argv
 ) -> void {
@@ -216,11 +216,11 @@ auto HavocClient::Main(
     ServerPullPlugins();
 }
 
-auto HavocClient::Exit() -> void {
+auto HcApplication::Exit() -> void {
     exit( 0 );
 }
 
-auto HavocClient::ApiLogin(
+auto HcApplication::ApiLogin(
     const json& data
 ) -> std::tuple<
     std::optional<std::string>,
@@ -311,7 +311,7 @@ auto HavocClient::ApiLogin(
     };
 }
 
-auto HavocClient::ApiSend(
+auto HcApplication::ApiSend(
     const std::string& endpoint,
     const json&        body,
     const bool         keep_alive
@@ -341,7 +341,7 @@ auto HavocClient::ApiSend(
     return { status, response.value() };
 }
 
-auto HavocClient::ServerPullPlugins(
+auto HcApplication::ServerPullPlugins(
     void
 ) -> void {
     auto plugins   = json();
@@ -486,7 +486,7 @@ auto HavocClient::ServerPullPlugins(
     MetaWorker.Thread->start();
 }
 
-auto HavocClient::ServerPullResource(
+auto HcApplication::ServerPullResource(
     const std::string& name,
     const std::string& version,
     const std::string& resource
@@ -536,7 +536,7 @@ auto HavocClient::ServerPullResource(
     return true;
 }
 
-auto HavocClient::RequestSend(
+auto HcApplication::RequestSend(
     const std::string&   url,
     const std::string&   data,
     const bool           keep_alive,
@@ -637,15 +637,15 @@ auto HavocClient::RequestSend(
     return std::make_tuple( status_code, response, ssl_hash );
 }
 
-auto HavocClient::eventClosed() -> void {
+auto HcApplication::eventClosed() -> void {
     spdlog::error( "websocket closed" );
     Exit();
 }
 
-auto HavocClient::Server() const -> std::string { return session.host + ":" + session.port; }
-auto HavocClient::Token()  const -> std::string { return session.token; }
+auto HcApplication::Server() const -> std::string { return session.host + ":" + session.port; }
+auto HcApplication::Token()  const -> std::string { return session.token; }
 
-auto HavocClient::eventHandle(
+auto HcApplication::eventHandle(
     const QByteArray& request
 ) -> void {
     auto event = json::parse( request.toStdString() );
@@ -662,7 +662,7 @@ auto HavocClient::eventHandle(
     }
 }
 
-auto HavocClient::StyleSheet(
+auto HcApplication::StyleSheet(
     void
 ) -> QByteArray {
     if ( QFile::exists( "theme.css" ) ) {
@@ -672,7 +672,7 @@ auto HavocClient::StyleSheet(
     return Helper::FileRead( ":/style/default" );
 }
 
-auto HavocClient::AddProtocol(
+auto HcApplication::AddProtocol(
     const std::string&  name,
     const py11::object& listener
 ) -> void {
@@ -682,7 +682,7 @@ auto HavocClient::AddProtocol(
     } );
 }
 
-auto HavocClient::ProtocolObject(
+auto HcApplication::ProtocolObject(
     const std::string& name
 ) -> std::optional<py11::object> {
     for ( auto& listener : protocols ) {
@@ -694,7 +694,7 @@ auto HavocClient::ProtocolObject(
     return std::nullopt;
 }
 
-auto HavocClient::Protocols(
+auto HcApplication::Protocols(
     void
 ) -> std::vector<std::string> {
     auto names = std::vector<std::string>();
@@ -706,7 +706,7 @@ auto HavocClient::Protocols(
     return names;
 }
 
-auto HavocClient::SetupThreads(
+auto HcApplication::SetupThreads(
     void
 ) -> void {
     //
@@ -716,8 +716,8 @@ auto HavocClient::SetupThreads(
     //
     {
         connect( Events.Thread, &QThread::started, Events.Worker, &HcEventWorker::run );
-        connect( Events.Worker, &HcEventWorker::availableEvent, this, &HavocClient::eventHandle );
-        connect( Events.Worker, &HcEventWorker::socketClosed, this, &HavocClient::eventClosed );
+        connect( Events.Worker, &HcEventWorker::availableEvent, this, &HcApplication::eventHandle );
+        connect( Events.Worker, &HcEventWorker::socketClosed, this, &HcApplication::eventClosed );
     }
 
     //
@@ -762,7 +762,7 @@ auto HavocClient::SetupThreads(
     }
 }
 
-auto HavocClient::AddBuilder(
+auto HcApplication::AddBuilder(
     const std::string & name,
     const py11::object& builder
 ) -> void {
@@ -772,7 +772,7 @@ auto HavocClient::AddBuilder(
     } );
 }
 
-auto HavocClient::BuilderObject(
+auto HcApplication::BuilderObject(
     const std::string& name
 ) -> std::optional<py11::object> {
 
@@ -785,7 +785,7 @@ auto HavocClient::BuilderObject(
     return std::nullopt;
 }
 
-auto HavocClient::Builders() -> std::vector<std::string>
+auto HcApplication::Builders() -> std::vector<std::string>
 {
     auto names = std::vector<std::string>();
 
@@ -796,7 +796,7 @@ auto HavocClient::Builders() -> std::vector<std::string>
     return names;
 }
 
-auto HavocClient::AddListener(
+auto HcApplication::AddListener(
     const json& listener
 ) -> void {
     spdlog::debug( "listener -> {}", listener.dump() );
@@ -805,7 +805,7 @@ auto HavocClient::AddListener(
     Gui->PageListener->addListener( listener );
 }
 
-auto HavocClient::RemoveListener(
+auto HcApplication::RemoveListener(
     const std::string& name
 ) -> void {
     spdlog::debug( "removing listener: {}", name );
@@ -830,7 +830,7 @@ auto HavocClient::RemoveListener(
     Gui->PageListener->removeListener( name );
 }
 
-auto HavocClient::ListenerObject(
+auto HcApplication::ListenerObject(
     const std::string &name
 ) -> std::optional<json> {
 
@@ -845,7 +845,7 @@ auto HavocClient::ListenerObject(
     return std::nullopt;
 }
 
-auto HavocClient::Listeners() -> std::vector<std::string>
+auto HcApplication::Listeners() -> std::vector<std::string>
 {
     auto names = std::vector<std::string>();
 
@@ -858,12 +858,12 @@ auto HavocClient::Listeners() -> std::vector<std::string>
     return names;
 }
 
-auto HavocClient::Agents() const -> std::vector<HcAgent*>
+auto HcApplication::Agents() const -> std::vector<HcAgent*>
 {
     return Gui->PageAgent->agents;
 }
 
-auto HavocClient::Agent(
+auto HcApplication::Agent(
     const std::string& uuid
 ) const -> std::optional<HcAgent*> {
     for ( auto agent : Gui->PageAgent->agents ) {
@@ -875,7 +875,7 @@ auto HavocClient::Agent(
     return std::nullopt;
 }
 
-auto HavocClient::AddAgentObject(
+auto HcApplication::AddAgentObject(
     const std::string&  type,
     const py11::object& object
 ) -> void {
@@ -885,7 +885,7 @@ auto HavocClient::AddAgentObject(
     } );
 }
 
-auto HavocClient::AgentObject(
+auto HcApplication::AgentObject(
     const std::string& type
 ) -> std::optional<py11::object> {
     for ( auto [name, object] : agents ) {
@@ -897,7 +897,7 @@ auto HavocClient::AgentObject(
     return std::nullopt;
 }
 
-auto HavocClient::Callbacks() -> std::vector<std::string>
+auto HcApplication::Callbacks() -> std::vector<std::string>
 {
     auto names = std::vector<std::string>();
 
@@ -908,7 +908,7 @@ auto HavocClient::Callbacks() -> std::vector<std::string>
     return names;
 }
 
-auto HavocClient::AddCallbackObject(
+auto HcApplication::AddCallbackObject(
     const std::string&  uuid,
     const py11::object& callback
 ) -> void {
@@ -918,7 +918,7 @@ auto HavocClient::AddCallbackObject(
     } );
 }
 
-auto HavocClient::RemoveCallbackObject(
+auto HcApplication::RemoveCallbackObject(
     const std::string& callback
 ) -> void {
     //
@@ -932,7 +932,7 @@ auto HavocClient::RemoveCallbackObject(
     }
 }
 
-auto HavocClient::CallbackObject(
+auto HcApplication::CallbackObject(
     const std::string& uuid
 ) -> std::optional<py11::object> {
     //
@@ -947,7 +947,7 @@ auto HavocClient::CallbackObject(
     return std::nullopt;
 }
 
-auto HavocClient::SetupDirectory(
+auto HcApplication::SetupDirectory(
     void
 ) -> bool {
     auto havoc_dir   = QDir( QDir::homePath() + "/.havoc" );
@@ -979,7 +979,7 @@ auto HavocClient::SetupDirectory(
     return true;
 }
 
-auto HavocClient::AddAction(
+auto HcApplication::AddAction(
     ActionObject* action
 ) -> void {
     if ( ! action ) {
@@ -997,7 +997,7 @@ auto HavocClient::AddAction(
     actions.push_back( action );
 }
 
-auto HavocClient::Actions(
+auto HcApplication::Actions(
     const ActionObject::ActionType& type
 ) -> std::vector<ActionObject*> {
     auto actions_type = std::vector<ActionObject*>();
@@ -1011,13 +1011,13 @@ auto HavocClient::Actions(
     return actions_type;
 }
 
-auto HavocClient::ScriptLoad(
+auto HcApplication::ScriptLoad(
     const std::string& path
 ) const -> void {
     Gui->PageScripts->LoadScript( path );
 }
 
-auto HavocClient::ScriptConfigProcess(
+auto HcApplication::ScriptConfigProcess(
     void
 ) -> void {
     //
@@ -1039,7 +1039,7 @@ auto HavocClient::ScriptConfigProcess(
     }
 }
 
-auto HavocClient::ProfileSync(
+auto HcApplication::ProfileSync(
     void
 ) -> void {
     auto profile_path = QFile( directory().path() + "/.profile.toml" );
@@ -1062,7 +1062,7 @@ auto HavocClient::ProfileSync(
     }
 }
 
-auto HavocClient::ProfileSave(
+auto HcApplication::ProfileSave(
     void
 ) -> void {
     auto profile_path = QFile( directory().path() + "/.profile.toml" );
@@ -1076,7 +1076,7 @@ auto HavocClient::ProfileSave(
     profile_path.close();
 }
 
-auto HavocClient::ProfileInsert(
+auto HcApplication::ProfileInsert(
     const std::string& type,
     const toml::value& data
 ) -> void {
@@ -1095,7 +1095,7 @@ auto HavocClient::ProfileInsert(
     ProfileSave();
 }
 
-auto HavocClient::ProfileQuery(
+auto HcApplication::ProfileQuery(
     const std::string& type
 ) -> toml::array {
     ProfileSync();
@@ -1107,7 +1107,7 @@ auto HavocClient::ProfileQuery(
     return toml::array();
 }
 
-auto HavocClient::ProfileDelete(
+auto HcApplication::ProfileDelete(
     const std::string& type,
     const std::int32_t entry
 ) -> void {
@@ -1133,7 +1133,7 @@ auto HavocClient::ProfileDelete(
     ProfileSave();
 }
 
-auto HavocClient::ProfileDelete(
+auto HcApplication::ProfileDelete(
     const std::string& type
 ) -> void {
     ProfileSync();
@@ -1147,4 +1147,4 @@ auto HavocClient::ProfileDelete(
     ProfileSave();
 }
 
-HavocClient::ActionObject::ActionObject() {}
+HcApplication::ActionObject::ActionObject() {}

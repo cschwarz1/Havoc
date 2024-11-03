@@ -150,7 +150,7 @@ HcPageListener::HcPageListener() {
 }
 
 auto HcPageListener::retranslateUi() -> void {
-    setStyleSheet( HavocClient::StyleSheet() );
+    setStyleSheet( HcApplication::StyleSheet() );
 
     setWindowTitle( "PageListener" );
     ActiveLabel->setText( "Listeners: 0" );
@@ -377,7 +377,7 @@ auto HcPageListener::handleListenerContextMenu(
     auto name       = QString();
     auto type       = std::string();
     auto selections = TableWidget->selectionModel()->selectedRows();
-    auto actions    = Havoc->Actions( HavocClient::ActionObject::ActionListener );
+    auto actions    = Havoc->Actions( HcApplication::ActionObject::ActionListener );
 
     if ( ! TableWidget->itemAt( pos ) ) {
         return;

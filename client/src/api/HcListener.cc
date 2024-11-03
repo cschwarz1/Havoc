@@ -47,9 +47,9 @@ auto HcListenerRegisterMenuAction(
     const std::string&  icon,
     const py11::object& callback
 ) -> void {
-    auto action = new HavocClient::ActionObject();
+    auto action = new HcApplication::ActionObject();
 
-    action->type          = HavocClient::ActionObject::ActionListener;
+    action->type          = HcApplication::ActionObject::ActionListener;
     action->name          = name;
     action->icon          = icon;
     action->callback      = callback;

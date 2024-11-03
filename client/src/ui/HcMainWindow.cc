@@ -231,7 +231,7 @@ auto HcMainWindow::MessageBox(
 ) -> void {
     auto message = QMessageBox();
 
-    message.setStyleSheet( HavocClient::StyleSheet() );
+    message.setStyleSheet( HcApplication::StyleSheet() );
     message.setWindowTitle( title.c_str() );
     message.setText( text.c_str() );
     message.setIcon( icon );

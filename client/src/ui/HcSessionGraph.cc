@@ -416,7 +416,7 @@ auto HcSessionGraphScene::contextMenuEvent(
 ) -> void {
     auto sessions   = selectedItems();
     auto menu       = QMenu();
-    auto actions    = Havoc->Actions( HavocClient::ActionObject::ActionAgent );
+    auto actions    = Havoc->Actions( HcApplication::ActionObject::ActionAgent );
     auto agent_type = std::string();
 
     //
@@ -440,7 +440,7 @@ auto HcSessionGraphScene::contextMenuEvent(
     // since there are item selected we
     // can dispatch and handle the event
     //
-    menu.setStyleSheet( HavocClient::StyleSheet() );
+    menu.setStyleSheet( HcApplication::StyleSheet() );
     if ( sessions.count() > 1 ) {
         menu.addAction( QIcon( ":/icons/16px-agent-console" ), "Interact" );
         menu.addSeparator();
@@ -1054,7 +1054,7 @@ auto HcGraphItemSignal::updatePulsation() const -> void {
 HcSessionGraphSetting::HcSessionGraphSetting(
     QWidget* parent
 ) : QToolButton( parent ) {
-    menu.setStyleSheet( HavocClient::StyleSheet() );
+    menu.setStyleSheet( HcApplication::StyleSheet() );
 
     _pulsation = menu.addAction( "show pulsation" );
     _pulsation->setCheckable( true );

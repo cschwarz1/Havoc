@@ -16,7 +16,7 @@ HcPageAgent::HcPageAgent(
     gridLayout->setObjectName( "gridLayout" );
 
     DockManager = new ads::CDockManager( this );
-    DockManager->setStyleSheet( HavocClient::StyleSheet() );
+    DockManager->setStyleSheet( HcApplication::StyleSheet() );
 
     ads::CDockManager::setConfigFlag( ads::CDockManager::AlwaysShowTabs, false );
     ads::CDockManager::setConfigFlag( ads::CDockManager::DefaultDockAreaButtons, false );
@@ -262,7 +262,7 @@ auto HcPageAgent::handleAgentMenu(
     auto agent         = std::optional<HcAgent*>();
     auto item          = static_cast<QTableWidgetItem*>( nullptr );
     auto selections    = AgentTable->selectionModel()->selectedRows();
-    auto agent_actions = Havoc->Actions( HavocClient::ActionObject::ActionAgent );
+    auto agent_actions = Havoc->Actions( HcApplication::ActionObject::ActionAgent );
     auto remove        = std::vector<HcAgent*>();
 
     /* check if we point to a session table item/agent */
@@ -513,7 +513,7 @@ auto HcPageAgent::itemChanged(
 auto HcPageAgent::actionTriggered(
     QAction* triggered
 ) -> void {
-    for ( auto action : Havoc->Actions( HavocClient::ActionObject::ActionHavoc ) ) {
+    for ( auto action : Havoc->Actions( HcApplication::ActionObject::ActionHavoc ) ) {
         if ( action->name == triggered->text().toStdString() ) {
 
             try {
@@ -751,7 +751,7 @@ HcAgentCompleter::HcAgentCompleter(
     setModel( _model );
 
     popup()->setObjectName( "HcAgentCompleter" );
-    popup()->setStyleSheet( HavocClient::StyleSheet() );
+    popup()->setStyleSheet( HcApplication::StyleSheet() );
     popup()->setItemDelegate( new HcDescriptionDelegate( this, popup() ) );
     popup()->installEventFilter( this );
 

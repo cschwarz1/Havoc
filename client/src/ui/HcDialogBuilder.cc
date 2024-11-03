@@ -118,11 +118,11 @@ HcDialogBuilder::HcDialogBuilder(
     gridLayout_2->addItem( horizontalSpacer, 0, 2, 1, 1 );
 
     SplitterTopBottom->setSizes( QList<int>() << 0 );
-    SplitterLeftRight->setSizes( QList<int>() << 1374 << 436 );
+    SplitterLeftRight->setSizes( QList<int>() << 1374 << 650 );
 
     retranslateUi();
 
-    setStyleSheet( HavocClient::StyleSheet() );
+    setStyleSheet( HcApplication::StyleSheet() );
     resize( 900, 880 );
 
     connect( ButtonGenerate,    &QPushButton::clicked, this, &HcDialogBuilder::clickedGenerate    );
@@ -481,7 +481,7 @@ auto HcDialogBuilder::clickedGenerate(
             }
         }
 
-        dialog.setStyleSheet( HavocClient::StyleSheet() );
+        dialog.setStyleSheet( HcApplication::StyleSheet() );
         dialog.setDirectory( QDir::homePath() );
         dialog.selectFile( name.c_str() );
         dialog.setAcceptMode( QFileDialog::AcceptSave );
@@ -550,7 +550,7 @@ auto HcDialogBuilder::clickedProfileSave(
     }
 
     Dialog->setWindowTitle( QCoreApplication::translate( "Profile Name", "Dialog", nullptr ) );
-    Dialog->setStyleSheet( HavocClient::StyleSheet() );
+    Dialog->setStyleSheet( HcApplication::StyleSheet() );
     Dialog->resize( 330, 70 );
 
     d_gridLayout->setObjectName( QString::fromUtf8( "gridLayout" ) );
@@ -645,7 +645,7 @@ auto HcDialogBuilder::clickedProfileLoad(
     auto type    = std::string();
     auto profile = json();
 
-    dialog.setStyleSheet( HavocClient::StyleSheet() );
+    dialog.setStyleSheet( HcApplication::StyleSheet() );
     dialog.setDirectory( QDir::homePath() );
     dialog.setWindowTitle( "Load Profile" );
     if ( dialog.exec() == Rejected ) {
@@ -792,7 +792,7 @@ auto HcDialogBuilder::contextMenuProfile(
         return;
     }
 
-    menu.setStyleSheet( HavocClient::StyleSheet() );
+    menu.setStyleSheet( HcApplication::StyleSheet() );
     menu.addAction( "Remove" );
     menu.addAction( "Export" );
 
@@ -863,7 +863,7 @@ auto HcDialogBuilder::contextMenuProfile(
             return;
         }
 
-        dialog.setStyleSheet( HavocClient::StyleSheet() );
+        dialog.setStyleSheet( HcApplication::StyleSheet() );
         dialog.setDirectory( QDir::homePath() );
         dialog.selectFile( QString::fromStdString( name ) + ".json" );
         dialog.setAcceptMode( QFileDialog::AcceptSave );

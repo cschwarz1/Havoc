@@ -1,6 +1,6 @@
 #include <Havoc.h>
 
-auto HavocClient::eventDispatch(
+auto HcApplication::eventDispatch(
     const json& event
 ) -> void {
     auto type = std::string();

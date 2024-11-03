@@ -40,7 +40,7 @@ public:
     }
 };
 
-class HavocClient : public QWidget {
+class HcApplication final : public QWidget {
 
     using toml_t = toml::basic_value<toml::discard_comments, std::unordered_map, std::vector>;
 
@@ -114,8 +114,8 @@ public:
     HcPyEngine* PyEngine;
 
     /* havoc client constructor and destructor */
-    explicit HavocClient();
-    ~HavocClient() override;
+    explicit HcApplication();
+    ~HcApplication() override;
 
     /* client entrypoint */
     auto Main(
@@ -355,6 +355,6 @@ Q_SIGNALS:
 };
 
 /* a global Havoc app instance */
-extern HavocClient* Havoc;
+extern HcApplication* Havoc;
 
 #endif //HAVOCCLIENT_HAVOC_H

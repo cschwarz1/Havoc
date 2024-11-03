@@ -1,6 +1,6 @@
 #include <Havoc.h>
 
-HavocClient* Havoc = {};
+HcApplication* Havoc = {};
 
 auto main(
     int    argc,
@@ -8,7 +8,7 @@ auto main(
 ) -> int {
     auto Application = QApplication( argc, argv );
 
-    Havoc = new HavocClient;
+    Havoc = new HcApplication;
     Havoc->Main( argc, argv );
 
     QApplication::exec();
