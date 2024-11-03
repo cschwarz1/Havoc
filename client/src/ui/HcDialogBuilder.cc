@@ -486,7 +486,7 @@ auto HcDialogBuilder::clickedGenerate(
         dialog.selectFile( name.c_str() );
         dialog.setAcceptMode( QFileDialog::AcceptSave );
 
-        if ( dialog.exec() == QFileDialog::Accepted ) {
+        if ( dialog.exec() == Accepted ) {
             path = dialog.selectedFiles().value( 0 );
 
             file.setFileName( path );
@@ -691,7 +691,77 @@ auto HcDialogBuilder::contextMenuProfile(
             ++index;
         }
     } else if ( action->text() == "Export" ) {
+        auto name    = std::string();
+        auto type    = std::string();
+        auto profile = json();
+        auto found   = false;
+        auto dialog  = QFileDialog();
+        auto path    = QString();
+        auto file    = QFile();
 
+        for ( const auto& _profile : Havoc->ProfileQuery( "profile" ) ) {
+            if ( !_profile.contains( "name" ) ||
+                 !_profile.contains( "type" ) ||
+                 !_profile.contains( "profile" )
+            ) {
+                continue;
+            }
+
+            name = toml::find<std::string>( _profile, "name" );
+            type = toml::find<std::string>( _profile, "type" );
+
+            if ( name != widget->name.toStdString() ) {
+                continue;
+            }
+
+            try {
+                if ( ( profile = json::parse( toml::find<std::string>( _profile, "profile" ) ) ).is_discarded() ) {
+                    spdlog::debug( "profile from toml entry has been discarded" );
+                    return;
+                }
+            } catch ( std::exception& e ) {
+                spdlog::error( "failed to parse profile from toml entry:\n{}", e.what() );
+                return;
+            }
+
+            found = true;
+            break;
+        }
+
+        if ( !found ) {
+            return;
+        }
+
+        dialog.setStyleSheet( HavocClient::StyleSheet() );
+        dialog.setDirectory( QDir::homePath() );
+        dialog.selectFile( QString::fromStdString( name ) + ".json" );
+        dialog.setAcceptMode( QFileDialog::AcceptSave );
+
+        if ( dialog.exec() == Accepted ) {
+            path = dialog.selectedFiles().value( 0 );
+
+            file.setFileName( path );
+
+            if ( file.open( QIODevice::ReadWrite ) ) {
+                file.write( QByteArray::fromStdString( json {
+                    { "name",    name    },
+                    { "type",    type    },
+                    { "profile", profile },
+                }.dump( 2 ) ) );
+
+                Helper::MessageBox(
+                    QMessageBox::Information,
+                    "Payload build",
+                    std::format( "saved payload under:\n{}", path.toStdString() )
+                );
+            } else {
+                Helper::MessageBox(
+                    QMessageBox::Critical,
+                    "Payload build failure",
+                    std::format( "Failed to write payload to \"{}\": {}", path.toStdString(), file.errorString().toStdString() )
+                );
+            }
+        }
     }
 }
 
