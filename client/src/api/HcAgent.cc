@@ -279,3 +279,162 @@ auto HcAgentRegisterMenuAction(
 
     Havoc->AddAction( action );
 }
+
+/*!
+ * @brief
+ *  generate an agent payload binary from the specified profile
+ *
+ * @param profile
+ *  profile to use for the payload
+ *
+ * @return
+ *  generated payload binary
+ */
+auto HcAgentProfileBuild(
+    const json& profile
+) -> py::bytes {
+
+}
+
+/*!
+ * @brief
+ * pop up a dialog to choose between available profiles and return
+ *
+ * @param agent_type
+ *  agent type to list. if empty all available
+ *  profiles are going to be displayed.
+ *
+ * @return
+ *  selected payload
+ */
+auto HcAgentProfileSelect(
+    const std::string& agent_type
+) -> std::optional<json> {
+    auto SelectDialog = new QDialog();
+    auto GridLayout   = new QGridLayout( SelectDialog );
+    auto LabelProfile = new QLabel( SelectDialog );
+    auto ListProfiles = new QListWidget( SelectDialog );
+    auto ButtonBox    = new QDialogButtonBox( SelectDialog );
+    auto Profile      = std::optional<json>();
+
+    SelectDialog->resize( 434, 316 );
+    SelectDialog->setStyleSheet( HcApplication::StyleSheet() );
+    SelectDialog->setObjectName( QString::fromUtf8( "SelectDialog" ) );
+
+    LabelProfile->setObjectName( QString::fromUtf8("LabelProfile" ) );
+    LabelProfile->setText( "<html><head/><body><p><span style=\"font-size:14pt;\">Profiles</span></p></body></html>" );
+
+    ListProfiles->setProperty( "HcListWidget", "half-dark" );
+    ListProfiles->setObjectName( QString::fromUtf8( "ListProfiles" ) );
+
+    ButtonBox->setObjectName( QString::fromUtf8( "ButtonBox" ) );
+    ButtonBox->setOrientation( Qt::Horizontal );
+    ButtonBox->setStandardButtons( QDialogButtonBox::Cancel | QDialogButtonBox::Ok );
+
+    GridLayout->setObjectName( QString::fromUtf8( "GridLayout" ) );
+    GridLayout->addWidget( LabelProfile, 0, 0, 1, 1, Qt::AlignHCenter );
+    GridLayout->addWidget( ListProfiles, 1, 0, 1, 1 );
+    GridLayout->addWidget( ButtonBox,    2, 0, 1, 1 );
+
+    QObject::connect( ButtonBox, &QDialogButtonBox::accepted, SelectDialog, &QDialog::accept );
+    QObject::connect( ButtonBox, &QDialogButtonBox::rejected, SelectDialog, &QDialog::reject );
+    QObject::connect( ListProfiles, &QListWidget::itemDoubleClicked, SelectDialog, &QDialog::accept );
+
+    QMetaObject::connectSlotsByName( SelectDialog );
+
+    //
+    // add all profile items to the dialog
+    //
+
+    for ( const auto& entry : Havoc->ProfileQuery( "profile" ) ) {
+        auto name    = std::string();
+        auto type    = std::string();
+        auto profile = json();
+
+        if ( !entry.contains( "name" )    ||
+             !entry.contains( "type" )    ||
+             !entry.contains( "profile" )
+        ) {
+            spdlog::error( "failed to parse following profile: {}", toml::format( entry ) );
+            continue;
+        }
+
+        name = toml::find<std::string>( entry, "name" );
+        type = toml::find<std::string>( entry, "type" );
+
+        if ( !agent_type.empty() && agent_type != type ) {
+            //
+            // if the agent type is the one from the
+            // current profile entry then include it
+            // in the profile list widget
+            //
+            continue;
+        }
+
+        try {
+            if ( ( profile = json::parse( toml::find<std::string>( entry, "profile" ) ) ).is_discarded() ) {
+                spdlog::error( "profile from toml entry has been discarded" );
+                goto LEAVE;
+            }
+        } catch ( std::exception& e ) {
+            spdlog::error( "failed to parse profile from toml entry:\n{}", e.what() );
+            goto LEAVE;
+        }
+
+        auto item   = new QListWidgetItem;
+        auto widget = new HcProfileItem(
+            QString::fromStdString( name ),
+            QString::fromStdString( type ),
+            profile,
+            SelectDialog
+        );
+
+        item->setSizeHint( widget->sizeHint() );
+        widget->setFocusPolicy( Qt::NoFocus );
+
+        ListProfiles->addItem( item );
+        ListProfiles->setItemWidget( item, widget );
+    }
+
+    //
+    // check if we even have any entries with the profile
+    //
+
+    if ( !ListProfiles->count() ) {
+        spdlog::debug( "no profile entries in the list dialog" );
+        goto LEAVE;
+    }
+
+    ListProfiles->clearSelection();
+    ListProfiles->setFocusPolicy( Qt::NoFocus );
+
+    if ( SelectDialog->exec() == QDialog::Rejected ) {
+        goto LEAVE;
+    }
+
+    if ( !ListProfiles->currentItem() ) {
+        spdlog::debug( "no profile has been specified" );
+        goto LEAVE;
+    }
+
+    Profile = dynamic_cast<HcProfileItem*>(
+        ListProfiles->itemWidget( ListProfiles->currentItem() )
+    )->profile;
+
+LEAVE:
+    for ( int i = 0; i < ListProfiles->count(); ++i ) {
+        auto item   = ListProfiles->item( i );
+        auto widget = ListProfiles->itemWidget( item );
+
+        if ( widget ) {
+            delete widget;
+        }
+
+        delete item;
+    }
+    ListProfiles->clear();
+
+    delete SelectDialog;
+
+    return Profile;
+}

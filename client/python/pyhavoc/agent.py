@@ -48,6 +48,10 @@ def HcAgentUnRegisterCallback( callback ):
     agent.HcAgentUnRegisterCallback( callback )
 
 
+def HcAgentProfileSelect( agent_type: str = "" ) -> dict:
+    return agent.HcAgentProfileSelect( agent_type )
+
+
 def HcAgentExecute(
     uuid: str,
     data: dict,

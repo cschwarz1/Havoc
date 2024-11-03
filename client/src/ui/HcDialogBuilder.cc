@@ -2,44 +2,31 @@
 #include <Havoc.h>
 #include <ui/HcDialogBuilder.h>
 
+HcProfileItem::HcProfileItem(
+    const QString& name,
+    const QString& type,
+    const json&    profile,
+    QObject*       parent
+) : name( name ), type( type ), profile( profile ) {
+    GridLayout = new QGridLayout( this );
+    GridLayout->setObjectName( "gridLayout" );
 
-class HcProfileItem final : public QWidget
-{
-    QGridLayout* GridLayout;
-    QLabel*      LabelName;
-    QLabel*      LabelDetails;
+    LabelName = new QLabel( this );
+    LabelName->setText( name );
 
-public:
-    QString name;
-    QString type;
-    json    profile;
+    auto font = LabelName->font();
+    font.setBold( true );
+    LabelName->setFont( font );
 
-    explicit HcProfileItem(
-        const QString& name,
-        const QString& type,
-        const json&    profile,
-        QObject*       parent  = nullptr
-    ) : name( name ), type( type ), profile( profile ) {
-        GridLayout = new QGridLayout( this );
-        GridLayout->setObjectName( "gridLayout" );
+    LabelDetails = new QLabel( this );
+    LabelDetails->setText( type );
 
-        LabelName = new QLabel( this );
-        LabelName->setText( name );
+    GridLayout->addWidget( LabelName,    0, 0, 1, 1 );
+    GridLayout->addWidget( LabelDetails, 1, 0, 1, 1 );
+    GridLayout->setColumnStretch( 0, 1 );
 
-        auto font = LabelName->font();
-        font.setBold( true );
-        LabelName->setFont( font );
-
-        LabelDetails = new QLabel( this );
-        LabelDetails->setText( type );
-
-        GridLayout->addWidget( LabelName,    0, 0, 1, 1 );
-        GridLayout->addWidget( LabelDetails, 1, 0, 1, 1 );
-        GridLayout->setColumnStretch( 0, 1 );
-
-        QMetaObject::connectSlotsByName( this );
-    }
-};
+    QMetaObject::connectSlotsByName( this );
+}
 
 HcDialogBuilder::HcDialogBuilder(
     QWidget* parent
@@ -48,6 +35,8 @@ HcDialogBuilder::HcDialogBuilder(
     if ( objectName().isEmpty() ) {
         setObjectName( "HcPageBuilder" );
     }
+
+    setWindowModality( Qt::WindowModal );
 
     gridLayout_2 = new QGridLayout( this );
     gridLayout_2->setObjectName( "gridLayout_2" );

@@ -52,4 +52,12 @@ auto HcAgentRegisterMenuAction(
     const py11::object& callback
 ) -> void;
 
+auto HcAgentProfileBuild(
+    const json& profile
+) -> py::bytes;
+
+auto HcAgentProfileSelect(
+    const std::string& agent_type = ""
+) -> std::optional<json>;
+
 #endif //HAVOCCLIENT_API_HCAGENT_H

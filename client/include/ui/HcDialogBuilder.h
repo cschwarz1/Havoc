@@ -22,6 +22,25 @@ struct Builder {
     QWidget*     widget;
 };
 
+class HcProfileItem final : public QWidget
+{
+    QGridLayout* GridLayout;
+    QLabel*      LabelName;
+    QLabel*      LabelDetails;
+
+public:
+    QString name;
+    QString type;
+    json    profile;
+
+    explicit HcProfileItem(
+        const QString& name,
+        const QString& type,
+        const json&    profile,
+        QObject*       parent  = nullptr
+    );
+};
+
 class HcDialogBuilder : public QDialog
 {
 public:
