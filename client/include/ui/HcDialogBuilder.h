@@ -59,15 +59,30 @@ private:
     ) -> std::optional<py11::object>;
 
 private slots:
-    auto PressedGenerate() -> void;
-    auto PressedSaveProfile() -> void;
-    auto PressedLoadProfile() -> void;
+    auto clickedGenerate(
+        void
+    ) -> void;
+
+    auto clickedProfileSave(
+        void
+    ) -> void;
+
+    auto clickedProfileLoad(
+        void
+    ) -> void;
+
+    auto itemSelectProfile(
+        QListWidgetItem *item
+    ) -> void;
+
+    auto contextMenuProfile(
+        const QPoint& pos
+    ) -> void;
 
 Q_SIGNALS:
     auto EventBuildLog(
         const QString& log
     ) -> void;
-
 };
 
 QT_END_NAMESPACE

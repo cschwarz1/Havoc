@@ -168,7 +168,7 @@ HcConnectDialog::HcConnectDialog() {
     } );
 
     connect( ListConnection, &QListWidget::itemClicked, this, [&] ( QListWidgetItem *item )  {
-        if ( ! item ) {
+        if ( !item ) {
             return;
         }
 
@@ -194,41 +194,43 @@ HcConnectDialog::HcConnectDialog() {
         auto menu = QMenu();
         auto item = ListConnection->itemAt( pos );
 
-        if ( item ) {
-            menu.setStyleSheet( HavocClient::StyleSheet() );
-            menu.addAction( "Remove" );
-            menu.addAction( "Remove All" );
+        if ( !item ) {
+            return;
+        }
 
-            auto widget = dynamic_cast<HcConnectionItem*>( ListConnection->itemWidget( item ) );
-            auto action = menu.exec( ListConnection->viewport()->mapToGlobal( pos ) );
+        menu.setStyleSheet( HavocClient::StyleSheet() );
+        menu.addAction( "Remove" );
+        menu.addAction( "Remove All" );
 
-            if ( !action ) {
-                return;
-            }
+        auto widget = dynamic_cast<HcConnectionItem*>( ListConnection->itemWidget( item ) );
+        auto action = menu.exec( ListConnection->viewport()->mapToGlobal( pos ) );
 
-            if ( action->text() == "Remove" ) {
-                auto index = 0;
-                for ( const auto& connection : Havoc->ProfileQuery( "connection" ) ) {
-                    auto name = std::string();
+        if ( !action ) {
+            return;
+        }
 
-                    if ( !connection.contains( "name" ) ) {
-                        continue;
-                    }
+        if ( action->text() == "Remove" ) {
+            auto index = 0;
+            for ( const auto& connection : Havoc->ProfileQuery( "connection" ) ) {
+                auto name = std::string();
 
-                    name = toml::find<std::string>( connection, "name" );
-                    if ( name == widget->name.toStdString() ) {
-                        Havoc->ProfileDelete( "connection", index );
-
-                        retranslateUi();
-                    }
-
-                    ++index;
+                if ( !connection.contains( "name" ) ) {
+                    continue;
                 }
-            } else if ( action->text() == "Remove All" ) {
-                Havoc->ProfileDelete( "connection" );
 
-                retranslateUi();
+                name = toml::find<std::string>( connection, "name" );
+                if ( name == widget->name.toStdString() ) {
+                    Havoc->ProfileDelete( "connection", index );
+                    retranslateUi();
+                    break;
+                }
+
+                ++index;
             }
+        } else if ( action->text() == "Remove All" ) {
+            Havoc->ProfileDelete( "connection" );
+
+            retranslateUi();
         }
     } );
 

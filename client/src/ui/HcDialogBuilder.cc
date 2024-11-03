@@ -125,9 +125,11 @@ HcDialogBuilder::HcDialogBuilder(
     setStyleSheet( HavocClient::StyleSheet() );
     resize( 900, 880 );
 
-    connect( ButtonGenerate,    &QPushButton::clicked, this, &HcDialogBuilder::PressedGenerate    );
-    connect( ButtonSaveProfile, &QPushButton::clicked, this, &HcDialogBuilder::PressedSaveProfile );
-    connect( ButtonLoadProfile, &QPushButton::clicked, this, &HcDialogBuilder::PressedLoadProfile );
+    connect( ButtonGenerate,    &QPushButton::clicked, this, &HcDialogBuilder::clickedGenerate    );
+    connect( ButtonSaveProfile, &QPushButton::clicked, this, &HcDialogBuilder::clickedProfileSave );
+    connect( ButtonLoadProfile, &QPushButton::clicked, this, &HcDialogBuilder::clickedProfileLoad );
+    connect( ListProfiles,      &QListWidget::itemDoubleClicked, this, &HcDialogBuilder::itemSelectProfile );
+    connect( ListProfiles,      &QListWidget::customContextMenuRequested, this, &HcDialogBuilder::contextMenuProfile );
 
     for ( auto& name : Havoc->Builders() ) {
         if ( Havoc->BuilderObject( name ).has_value() ) {
@@ -147,7 +149,10 @@ HcDialogBuilder::~HcDialogBuilder() {
 auto HcDialogBuilder::retranslateUi() -> void {
     setWindowTitle( "Payload Builder" );
 
-    ComboPayload->addItem( "(no payload available)" );
+    if ( !ComboPayload->count() ) {
+        ComboPayload->addItem( "(no payload available)" );
+    }
+
     LabelPayload->setText( "Payload:" );
     ButtonGenerate->setText( "Generate" );
     ButtonSaveProfile->setText( "Save Profile" );
@@ -247,7 +252,7 @@ auto HcDialogBuilder::AddBuilder(
     Builders.push_back( builder );
 }
 
-auto HcDialogBuilder::PressedGenerate(
+auto HcDialogBuilder::clickedGenerate(
     void
 ) -> void {
     auto data   = json();
@@ -514,7 +519,7 @@ ERROR_SERVER_RESPONSE:
     );
 }
 
-auto HcDialogBuilder::PressedSaveProfile(
+auto HcDialogBuilder::clickedProfileSave(
     void
 ) -> void {
     auto Dialog        = new QDialog();
@@ -629,10 +634,65 @@ auto HcDialogBuilder::PressedSaveProfile(
     delete Dialog;
 }
 
-auto HcDialogBuilder::PressedLoadProfile(
+auto HcDialogBuilder::clickedProfileLoad(
     void
 ) -> void {
 
+}
+
+auto HcDialogBuilder::itemSelectProfile(
+    QListWidgetItem *item
+) -> void {
+    if ( !item ) {
+        return;
+    }
+
+    auto widget = dynamic_cast<HcProfileItem*>( ListProfiles->itemWidget( item ) );
+
+}
+
+auto HcDialogBuilder::contextMenuProfile(
+    const QPoint& pos
+) -> void {
+    auto menu = QMenu();
+    auto item = ListProfiles->itemAt( pos );
+
+    if ( !item ) {
+        return;
+    }
+
+    menu.setStyleSheet( HavocClient::StyleSheet() );
+    menu.addAction( "Remove" );
+    menu.addAction( "Export" );
+
+    auto widget = dynamic_cast<HcProfileItem*>( ListProfiles->itemWidget( item ) );
+    auto action = menu.exec( ListProfiles->viewport()->mapToGlobal( pos ) );
+
+    if ( !action ) {
+        return;
+    }
+
+    if ( action->text() == "Remove" ) {
+        int index = 0;
+        for ( const auto& _profile : Havoc->ProfileQuery( "profile" ) ) {
+            auto name = std::string();
+
+            if ( !_profile.contains( "name" ) ) {
+                continue;
+            }
+
+            name = toml::find<std::string>( _profile, "name" );
+            if ( name == widget->name.toStdString() ) {
+                Havoc->ProfileDelete( "profile", index );
+                retranslateUi();
+                break;
+            }
+
+            ++index;
+        }
+    } else if ( action->text() == "Export" ) {
+
+    }
 }
 
 auto HcDialogBuilder::EventBuildLog(
