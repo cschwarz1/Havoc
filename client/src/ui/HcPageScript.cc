@@ -92,7 +92,7 @@ HcPagePlugins::HcPagePlugins()
         auto plugin    = QUrl();
         auto exception = std::string();
 
-        dialog.setStyleSheet( Havoc->StyleSheet() );
+        dialog.setStyleSheet( HavocClient::StyleSheet() );
         dialog.setDirectory( QDir::homePath() );
 
         if ( LoadCallback.has_value() ) {

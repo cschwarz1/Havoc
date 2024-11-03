@@ -637,7 +637,138 @@ auto HcDialogBuilder::clickedProfileSave(
 auto HcDialogBuilder::clickedProfileLoad(
     void
 ) -> void {
+    auto dialog  = QFileDialog();
+    auto path    = QString();
+    auto file    = QFile();
+    auto object  = json();
+    auto name    = std::string();
+    auto type    = std::string();
+    auto profile = json();
 
+    dialog.setStyleSheet( HavocClient::StyleSheet() );
+    dialog.setDirectory( QDir::homePath() );
+    dialog.setWindowTitle( "Load Profile" );
+    if ( dialog.exec() == Rejected ) {
+        return;
+    }
+
+    path = dialog.selectedUrls().value( 0 ).toLocalFile();
+    if ( path.isNull() ) {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Profile Loading Failure",
+            std::format( "failed to load profile: path is empty" )
+        );
+
+        return;
+    }
+
+    file.setFileName( dialog.selectedUrls().value( 0 ).toLocalFile() );
+    if ( !file.exists() ) {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Profile Loading Failure",
+            std::format( "failed to load profile:\n\n{}", path.toStdString() )
+        );
+        return;
+    }
+
+    if ( !file.open( QIODevice::ReadOnly | QIODevice::Text ) ) {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Profile Loading Failure",
+            std::format( "failed to open profile:\n\n{}", file.errorString().toStdString() )
+        );
+        return;
+    }
+
+    try {
+        if ( ( object = json::parse( file.readAll().toStdString() ) ).is_discarded() ) {
+            spdlog::debug( "specified profile has been discarded!!" );
+            Helper::MessageBox(
+                QMessageBox::Critical,
+                "Profile Loading Failure",
+                std::format( "profile has been discarded while parsing:\n\n{}", path.toStdString() )
+            );
+            return;
+        }
+    } catch ( std::exception& e ) {
+        spdlog::error( "failed to parse profile:\n{}", e.what() );
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Profile Loading Failure",
+            std::format( "failed to parse profile:\n\n{}", e.what() )
+        );
+        return;
+    }
+
+    //
+    // parse json object and retrieve name, type and profile configuration
+    //
+
+    if ( object.contains( "name" ) && object[ "name" ].is_string() ) {
+        name = object[ "name" ].get<std::string>();
+    } else {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Profile Loading Failure",
+            "Invalid Profile: invalid name"
+        );
+        return;
+    }
+
+    if ( object.contains( "type" ) && object[ "type" ].is_string() ) {
+        type = object[ "type" ].get<std::string>();
+    } else {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Profile Loading Failure",
+            "Invalid Profile: invalid type"
+        );
+        return;
+    }
+
+    if ( object.contains( "profile" ) && object[ "profile" ].is_object() ) {
+        profile = object[ "profile" ].get<json>();
+    } else {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Profile Loading Failure",
+            "Invalid Profile: invalid profile configuration"
+        );
+        return;
+    }
+
+    //
+    // sanity check if the profile has not been already registered
+    //
+    for ( const auto& _profile : Havoc->ProfileQuery( "profile" ) ) {
+        if ( !_profile.contains( "name" ) ) {
+            continue;
+        }
+
+        if ( name == toml::find<std::string>( _profile, "name" ) ) {
+            Helper::MessageBox(
+                QMessageBox::Critical,
+                "Payload Loading Failure",
+                "failed to load profile: profile name already exists"
+            );
+
+            return;
+        }
+    }
+
+    //
+    // insert the profile name and configuration
+    // into the profile file
+    //
+    Havoc->ProfileInsert( "profile", toml::table {
+        { "name",    name           },
+        { "type",    type           },
+        { "profile", profile.dump() },
+    } );
+
+    retranslateUi();
 }
 
 auto HcDialogBuilder::itemSelectProfile(
@@ -736,6 +867,7 @@ auto HcDialogBuilder::contextMenuProfile(
         dialog.setDirectory( QDir::homePath() );
         dialog.selectFile( QString::fromStdString( name ) + ".json" );
         dialog.setAcceptMode( QFileDialog::AcceptSave );
+        dialog.setWindowTitle( "Save Profile" );
 
         if ( dialog.exec() == Accepted ) {
             path = dialog.selectedFiles().value( 0 );
@@ -752,13 +884,13 @@ auto HcDialogBuilder::contextMenuProfile(
                 Helper::MessageBox(
                     QMessageBox::Information,
                     "Payload build",
-                    std::format( "saved payload under:\n{}", path.toStdString() )
+                    std::format( "saved payload profile under:\n\n{}", path.toStdString() )
                 );
             } else {
                 Helper::MessageBox(
                     QMessageBox::Critical,
                     "Payload build failure",
-                    std::format( "Failed to write payload to \"{}\": {}", path.toStdString(), file.errorString().toStdString() )
+                    std::format( "Failed to write payload profile to \"{}\": {}", path.toStdString(), file.errorString().toStdString() )
                 );
             }
         }
