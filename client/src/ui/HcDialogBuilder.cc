@@ -540,7 +540,7 @@ auto HcDialogBuilder::clickedProfileSave(
     }
 
     auto object = BuilderObject( payload_type );
-    if ( ! object.has_value() ) {
+    if ( !object.has_value() ) {
         Helper::MessageBox(
             QMessageBox::Critical,
             "Payload build failure",
@@ -780,6 +780,39 @@ auto HcDialogBuilder::itemSelectProfile(
 
     auto widget = dynamic_cast<HcProfileItem*>( ListProfiles->itemWidget( item ) );
 
+    if ( Builders.empty() ) {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Payload profile failure",
+            "failed to add profile: no builder registered"
+        );
+
+        return;
+    }
+
+    auto object = BuilderObject( widget->type.toStdString() );
+    if ( !object.has_value() ) {
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Payload build failure",
+            std::format( "specified payload builder does not exist: {}", widget->type.toStdString() )
+        );
+        return;
+    }
+
+    try {
+        HcPythonAcquire();
+        object.value().attr( "profile_load" )( widget->profile ).cast<json>();
+    } catch ( std::exception& e ) {
+        spdlog::error( "payload profile loading failure: {}", e.what() );
+
+        Helper::MessageBox(
+            QMessageBox::Critical,
+            "Profile Loading Failure",
+            std::format( "failed to load profile data: \n{}", e.what() )
+        );
+        return;
+    }
 }
 
 auto HcDialogBuilder::contextMenuProfile(

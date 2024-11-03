@@ -65,7 +65,7 @@ class HcPayloadView:
     ##
     ## load profile
     ##
-    def profile_load( self, profile: dict ) -> bool:
+    def profile_load( self, profile: dict ) -> None:
         pass
 
     ##
