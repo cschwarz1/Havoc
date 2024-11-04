@@ -80,7 +80,8 @@ public:
     auto generate(
         const std::string& type,
         const json&        profile,
-        std::string&       filename
+        std::string&       filename,
+        bool               profile_load = true
     ) -> std::optional<std::string>;
 
 private:

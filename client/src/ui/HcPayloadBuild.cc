@@ -253,7 +253,8 @@ auto HcPayloadBuild::generate(
 auto HcPayloadBuild::generate(
     const std::string& type,
     const json&        profile,
-    std::string&       filename
+    std::string&       filename,
+    const bool         profile_load
 ) -> std::optional<std::string> {
     auto python_obj = std::optional<py11::object>();
     auto object     = json();
@@ -336,7 +337,7 @@ auto HcPayloadBuild::generate(
     {
         HcPythonAcquire();
 
-        if ( !profile.empty() ) {
+        if ( !profile.empty() && profile_load ) {
             //
             // we are now going to pass the profile to the builder
             // and the extensions so during payload_process will be
@@ -365,11 +366,14 @@ auto HcPayloadBuild::generate(
 auto HcPayloadBuild::clickedGenerate(
     void
 ) -> void {
-    auto data   = json();
-    auto body   = json();
-    auto config = json();
-    auto name   = ComboPayload->currentText().toStdString();
-    auto object = BuilderObject( name );
+    auto data     = json();
+    auto body     = json();
+    auto config   = json();
+    auto name     = ComboPayload->currentText().toStdString();
+    auto object   = BuilderObject( name );
+    auto filename = std::string();
+    auto payload  = std::optional<std::string>();
+    auto dialog   = QFileDialog();
 
     TextBuildLog->clear();
     if ( SplitterTopBottom->sizes()[ 0 ] == 0 ) {
@@ -379,7 +383,7 @@ auto HcPayloadBuild::clickedGenerate(
     if ( Builders.empty() ) {
         Helper::MessageBox(
             QMessageBox::Critical,
-            "Payload build failure",
+            "Payload Build Failure",
             "failed to build payload: no builder registered"
         );
 
@@ -392,7 +396,7 @@ auto HcPayloadBuild::clickedGenerate(
     if ( ! object.has_value() ) {
         Helper::MessageBox(
             QMessageBox::Critical,
-            "Payload build failure",
+            "Payload Build Failure",
             std::format( "specified payload builder does not exist: {}", name )
         );
         return;
@@ -413,7 +417,7 @@ auto HcPayloadBuild::clickedGenerate(
 
                 Helper::MessageBox(
                     QMessageBox::Critical,
-                    "Payload build failure",
+                    "Payload Build Failure",
                     std::format( "sanity check failed: {}", ComboPayload->currentText().toStdString() )
                 );
 
@@ -437,196 +441,49 @@ auto HcPayloadBuild::clickedGenerate(
     // endpoint to receive a payload from the server
     //
 
-    data = {
-        { "name",   name   },
-        { "config", config },
-    };
-
-    auto [status_code, response] = Havoc->ApiSend( "/api/agent/build", data );
-
-    if ( status_code != 200 ) {
-        try {
-            if ( ( data = json::parse( response ) ).is_discarded() ) {
-                spdlog::error( "failed to parse json object: json has been discarded" );
-                goto ERROR_SERVER_RESPONSE;
-            };
-        } catch ( std::exception& e ) {
-            spdlog::error( "exception raised while parsing json object: {}", e.what() );
-            goto ERROR_SERVER_RESPONSE;
-        };
-
-        if ( ! data.contains( "error" ) ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-
-        if ( ! data[ "error" ].is_string() ) {
-            goto ERROR_SERVER_RESPONSE;
-        }
-
-        Helper::MessageBox(
-            QMessageBox::Critical,
-            "Payload build failure",
-            QString( "Failed to build payload \"%1\": %2" ).arg( name.c_str() ).arg( data[ "error" ].get<std::string>().c_str() ).toStdString()
-        );
-    } else {
-        auto dialog  = QFileDialog();
-        auto path    = QString();
-        auto file    = QFile();
-        auto payload = QByteArray();
-        auto context = json();
-
-        try {
-            if ( ( data = json::parse( response ) ).is_discarded() ) {
-                spdlog::error( "failed to parse json object: json has been discarded" );
-                goto ERROR_SERVER_RESPONSE;
-            };
-        } catch ( std::exception& e ) {
-            spdlog::error( "exception raised while parsing json object: {}", e.what() );
-            goto ERROR_SERVER_RESPONSE;
-        };
-
-        //
-        // get the file name of the generated implant
-        //
-        if ( data.contains( "filename" ) ) {
-            if ( data[ "filename" ].is_string() ) {
-                name = data[ "filename" ].get<std::string>();
-            } else {
-                Helper::MessageBox(
-                    QMessageBox::Critical,
-                    "Payload build error",
-                    "invalid response: payload file name is not a string"
-                );
-                return;
-            }
-        } else {
+    try {
+        if ( ! ( payload = generate( name, config, filename, false ) ).has_value() ) {
             Helper::MessageBox(
                 QMessageBox::Critical,
-                "Payload build error",
-                "invalid response: payload file name not specified"
+                "Payload Build Failure",
+                "failed to generate payload"
             );
+
             return;
         }
-
-        //
-        // get the payload data of the generated implant
-        //
-        if ( data.contains( "payload" ) ) {
-            if ( data[ "payload" ].is_string() ) {
-                payload = QByteArray::fromBase64( data[ "payload" ].get<std::string>().c_str() );
-            }  else {
-                Helper::MessageBox(
-                    QMessageBox::Critical,
-                    "Payload build error",
-                    "invalid response: payload data is not a string"
-                );
-                return;
-            }
-        }  else {
-            Helper::MessageBox(
-                QMessageBox::Critical,
-                "Payload build error",
-                "invalid response: payload data not specified"
-            );
-            return;
-        }
-
-        //
-        // get the payload context of the generated implant
-        //
-        if ( data.contains( "context" ) ) {
-            if ( data[ "context" ].is_object() ) {
-                context = data[ "context" ].get<json>();
-            }  else {
-                Helper::MessageBox(
-                    QMessageBox::Critical,
-                    "Payload build error",
-                    "invalid response: payload context is not an object"
-                );
-                return;
-            }
-        }  else {
-            Helper::MessageBox(
-                QMessageBox::Critical,
-                "Payload build error",
-                "invalid response: payload context not specified"
-            );
-            return;
-        }
-
-        //
-        // process payload by passing it to python builder instance
-        // we are also creating a scope for it so the gil can be released
-        // at the end of the scope after finishing interacting with the
-        // python builder instance
-        //
-        {
-            HcPythonAcquire();
-
-            try {
-                //
-                // do some post payload processing after retrieving
-                // the payload from the remote server plus the entire
-                // configuration we have to include into the payload
-                //
-                auto processed = builder.attr( "payload_process" )(
-                    py11::bytes( payload.toStdString().c_str(), payload.toStdString().length() ),
-                    context
-                ).cast<std::string>();
-
-                //
-                // set the payload from the processed value we retrieved
-                // back from the python builder instance
-                //
-                payload = QByteArray::fromStdString( processed );
-            } catch ( py11::error_already_set &eas ) {
-                spdlog::error( "failed to process payload \"{}\": \n{}", name, eas.what() );
-
-                Helper::MessageBox(
-                    QMessageBox::Critical,
-                    "Payload build failure",
-                    std::format( "failed to process payload \"{}\": \n{}", name, eas.what() )
-                );
-                return;
-            }
-        }
-
-        dialog.setStyleSheet( HcApplication::StyleSheet() );
-        dialog.setDirectory( QDir::homePath() );
-        dialog.selectFile( name.c_str() );
-        dialog.setAcceptMode( QFileDialog::AcceptSave );
-
-        if ( dialog.exec() == Accepted ) {
-            path = dialog.selectedFiles().value( 0 );
-
-            file.setFileName( path );
-            if ( file.open( QIODevice::ReadWrite ) ) {
-                file.write( payload );
-
-                Helper::MessageBox(
-                    QMessageBox::Information,
-                    "Payload build",
-                    std::format( "saved payload under:\n{}", path.toStdString() )
-                );
-            } else {
-                Helper::MessageBox(
-                    QMessageBox::Critical,
-                    "Payload build failure",
-                    std::format( "Failed to write payload to \"{}\": {}", path.toStdString(), file.errorString().toStdString() )
-                );
-            }
-        }
-
+    } catch ( std::exception& e ) {
+        Helper::MessageBox( QMessageBox::Critical, "Payload Build Failure", e.what() );
         return;
     }
 
+    dialog.setStyleSheet( HcApplication::StyleSheet() );
+    dialog.setDirectory( QDir::homePath() );
+    dialog.selectFile( QString::fromStdString( filename ) );
+    dialog.setAcceptMode( QFileDialog::AcceptSave );
 
-ERROR_SERVER_RESPONSE:
-    Helper::MessageBox(
-        QMessageBox::Critical,
-        "Payload build failure",
-        QString( "Failed to build payload \"%1\": Invalid response from the server" ).arg( name.c_str() ).toStdString()
-    );
+    if ( dialog.exec() == Accepted ) {
+        auto path = dialog.selectedFiles().value( 0 );
+        auto file = QFile();
+
+        file.setFileName( path );
+        if ( file.open( QIODevice::ReadWrite ) ) {
+            file.write( QByteArray::fromStdString( payload.value() ) );
+
+            Helper::MessageBox(
+                QMessageBox::Information,
+                "Payload Build",
+                std::format( "saved payload under:\n\n{}", path.toStdString() )
+            );
+        } else {
+            Helper::MessageBox(
+                QMessageBox::Critical,
+                "Payload Build Failure",
+                std::format( "failed to write payload to \"{}\": {}", path.toStdString(), file.errorString().toStdString() )
+            );
+        }
+    }
+
+    return;
 }
 
 auto HcPayloadBuild::clickedProfileSave(
