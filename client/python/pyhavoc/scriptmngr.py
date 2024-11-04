@@ -40,6 +40,7 @@ class HcPyScriptMngrStdOutErrHandler:
             core.HcIoConsoleWriteStdOut( self.buffer.rstrip( '\n' ).encode( 'utf-8' ) )
             self.buffer = ""
 
+
 ##
 ## redirect StdOut and StdErr
 ##

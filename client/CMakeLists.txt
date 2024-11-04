@@ -77,15 +77,15 @@ set( HAVOC_INCLUDE
         include/api/HcAgent.h
         include/api/HcListener.h
 
-        include/ui/HcConnectDialog.h
         include/ui/HcMainWindow.h
+        include/ui/HcConnectDialog.h
         include/ui/HcListenerDialog.h
 
         include/ui/HcPageAgent.h
-        include/ui/HcDialogBuilder.h
         include/ui/HcPageListener.h
         include/ui/HcPageScript.h
 
+        include/ui/HcPayloadBuild.h
         include/ui/HcWidget.h
         include/ui/HcConsole.h
         include/ui/HcLineEdit.h
@@ -116,9 +116,9 @@ set( HAVOC_SRC
 
         src/ui/HcPageAgent.cc
         src/ui/HcPageListener.cc
-        src/ui/HcDialogBuilder.cc
         src/ui/HcPageScript.cc
 
+        src/ui/HcPayloadBuild.cc
         src/ui/HcWidget.cc
         src/ui/HcConsole.cc
         src/ui/HcLineEdit.cc

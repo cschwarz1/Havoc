@@ -53,7 +53,8 @@ auto HcAgentRegisterMenuAction(
 ) -> void;
 
 auto HcAgentProfileBuild(
-    const json& profile
+    const std::string& agent_type,
+    const json&        profile
 ) -> py::bytes;
 
 auto HcAgentProfileSelect(

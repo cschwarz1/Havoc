@@ -284,6 +284,9 @@ auto HcAgentRegisterMenuAction(
  * @brief
  *  generate an agent payload binary from the specified profile
  *
+ * @param agent_type
+ *  agent type to generate
+ *
  * @param profile
  *  profile to use for the payload
  *
@@ -291,9 +294,31 @@ auto HcAgentRegisterMenuAction(
  *  generated payload binary
  */
 auto HcAgentProfileBuild(
-    const json& profile
+    const std::string& agent_type,
+    const json&        profile
 ) -> py::bytes {
+    auto builder   = HcPayloadBuild();
+    auto payload   = std::optional<std::string>();
 
+    try {
+        payload = builder.generate( agent_type, profile );
+    } catch ( std::exception& e ) {
+        //
+        // since we have captured an exception
+        // while generating the payload we are
+        // going to get the python gil and throw
+        // the exception in python as well
+        //
+        auto acquire = py::gil_scoped_acquire();
+        throw py11::value_error( e.what() );
+    }
+
+    //
+    // acquire the gil to create a
+    // python bytes object to return
+    //
+    auto acquire = py::gil_scoped_acquire();
+    return py::bytes( payload.value() );
 }
 
 /*!

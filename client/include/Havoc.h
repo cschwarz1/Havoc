@@ -16,7 +16,7 @@ class HcMainWindow;
 #include <ui/HcPageListener.h>
 #include <ui/HcPageScript.h>
 
-#include <ui/HcDialogBuilder.h>
+#include <ui/HcPayloadBuild.h>
 #include <ui/HcListenerDialog.h>
 #include <ui/HcMainWindow.h>
 #include <ui/HcConnectDialog.h>

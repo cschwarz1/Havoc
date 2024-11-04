@@ -52,6 +52,10 @@ def HcAgentProfileSelect( agent_type: str = "" ) -> dict:
     return agent.HcAgentProfileSelect( agent_type )
 
 
+def HcAgentProfileBuild( agent_type: str, profile: dict ) -> bytes:
+    return agent.HcAgentProfileBuild( agent_type, profile )
+
+
 def HcAgentExecute(
     uuid: str,
     data: dict,
@@ -61,7 +65,7 @@ def HcAgentExecute(
 
 
 class HcAgent:
-    def __init__( self, uuid: str = "", type: str = "", meta: dict = {} ):
+    def __init__( self, uuid: str, type: str, meta: dict ):
         self.uuid = uuid
         self.type = type
         self.meta = meta

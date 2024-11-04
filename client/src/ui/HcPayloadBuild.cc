@@ -1,6 +1,6 @@
 #include <Common.h>
 #include <Havoc.h>
-#include <ui/HcDialogBuilder.h>
+#include <ui/HcPayloadBuild.h>
 
 HcProfileItem::HcProfileItem(
     const QString& name,
@@ -28,7 +28,7 @@ HcProfileItem::HcProfileItem(
     QMetaObject::connectSlotsByName( this );
 }
 
-HcDialogBuilder::HcDialogBuilder(
+HcPayloadBuild::HcPayloadBuild(
     QWidget* parent
 ) : QDialog( parent ) {
 
@@ -114,11 +114,11 @@ HcDialogBuilder::HcDialogBuilder(
     setStyleSheet( HcApplication::StyleSheet() );
     resize( 900, 880 );
 
-    connect( ButtonGenerate,    &QPushButton::clicked, this, &HcDialogBuilder::clickedGenerate    );
-    connect( ButtonSaveProfile, &QPushButton::clicked, this, &HcDialogBuilder::clickedProfileSave );
-    connect( ButtonLoadProfile, &QPushButton::clicked, this, &HcDialogBuilder::clickedProfileLoad );
-    connect( ListProfiles,      &QListWidget::itemDoubleClicked, this, &HcDialogBuilder::itemSelectProfile );
-    connect( ListProfiles,      &QListWidget::customContextMenuRequested, this, &HcDialogBuilder::contextMenuProfile );
+    connect( ButtonGenerate,    &QPushButton::clicked, this, &HcPayloadBuild::clickedGenerate    );
+    connect( ButtonSaveProfile, &QPushButton::clicked, this, &HcPayloadBuild::clickedProfileSave );
+    connect( ButtonLoadProfile, &QPushButton::clicked, this, &HcPayloadBuild::clickedProfileLoad );
+    connect( ListProfiles,      &QListWidget::itemDoubleClicked, this, &HcPayloadBuild::itemSelectProfile );
+    connect( ListProfiles,      &QListWidget::customContextMenuRequested, this, &HcPayloadBuild::contextMenuProfile );
 
     for ( auto& name : Havoc->Builders() ) {
         if ( Havoc->BuilderObject( name ).has_value() ) {
@@ -129,13 +129,13 @@ HcDialogBuilder::HcDialogBuilder(
     QMetaObject::connectSlotsByName( this );
 }
 
-HcDialogBuilder::~HcDialogBuilder() {
+HcPayloadBuild::~HcPayloadBuild() {
     for ( auto& builder : Builders ) {
         delete builder.widget;
     }
 }
 
-auto HcDialogBuilder::retranslateUi() -> void {
+auto HcPayloadBuild::retranslateUi() -> void {
     setWindowTitle( "Payload Builder" );
 
     if ( !ComboPayload->count() ) {
@@ -202,7 +202,7 @@ auto HcDialogBuilder::retranslateUi() -> void {
     }
 }
 
-auto HcDialogBuilder::AddBuilder(
+auto HcPayloadBuild::AddBuilder(
     const std::string&  name,
     const py11::object& object
 ) -> void {
@@ -241,7 +241,128 @@ auto HcDialogBuilder::AddBuilder(
     Builders.push_back( builder );
 }
 
-auto HcDialogBuilder::clickedGenerate(
+auto HcPayloadBuild::generate(
+    const std::string& type,
+    const json&        profile
+) -> std::optional<std::string> {
+    auto file = std::string();
+
+    return generate( type, profile, file );
+}
+
+auto HcPayloadBuild::generate(
+    const std::string& type,
+    const json&        profile,
+    std::string&       filename
+) -> std::optional<std::string> {
+    auto python_obj = std::optional<py11::object>();
+    auto object     = json();
+    auto context    = json();
+    auto payload    = std::string();
+
+    if ( Builders.empty() ) {
+        throw std::runtime_error( "no builder registered" );
+    }
+
+    if ( ! ( python_obj = BuilderObject( type ) ).has_value() ) {
+        throw std::runtime_error( "specified payload builder does not exist" );
+    }
+
+    //
+    // generate the configuration for the payload
+    //
+
+    auto [status, response] = Havoc->ApiSend( "/api/agent/build", {
+        { "name",   type    },
+        { "config", profile },
+    } );
+
+    if ( status != 200 ) {
+        //
+        // process the response and throw an error
+        //
+
+        if ( ( object = json::parse( response ) ).is_discarded() ) {
+            throw std::runtime_error( "failed to parse json object: json has been discarded" );
+        };
+
+        if ( !object.contains( "error" ) || !object[ "error" ].is_string() ) {
+            throw std::runtime_error( "invalid server response: invalid error" );
+        };
+
+        throw std::runtime_error( std::format(
+            "failed to build payload: {}", object[ "error" ].get<std::string>()
+        ) );
+    }
+
+    //
+    // parse and sanity check the server json response
+    //
+
+    if ( ( object = json::parse( response ) ).is_discarded() ) {
+        throw std::runtime_error( "failed to parse json object: json has been discarded" );
+    };
+
+    if ( !object.contains( "filename" ) || !object[ "filename" ].is_string() ) {
+        throw std::runtime_error( "invalid server response: invalid filename" );
+    };
+
+    if ( !object.contains( "payload" ) || !object[ "payload" ].is_string() ) {
+        throw std::runtime_error( "invalid server response: invalid payload" );
+    };
+
+    if ( !object.contains( "context" ) || !object[ "context" ].is_object() ) {
+        throw std::runtime_error( "invalid server response: invalid context" );
+    };
+
+    //
+    // parse the filename, context and decode
+    // payload binary from json response object
+    //
+
+    filename = object.at( "filename" ).get<std::string>();
+    context  = object.at( "context" ).get<json>();
+    payload  = object.at( "payload" ).get<std::string>();
+    payload  = QByteArray::fromBase64(
+        QByteArray::fromStdString( payload )
+    ).toStdString();
+
+    //
+    // process payload by passing it to python builder instance
+    // we are also creating a scope for it so the gil can be released
+    // at the end of the scope after finishing interacting with the
+    // python builder instance
+    //
+    {
+        HcPythonAcquire();
+
+        if ( !profile.empty() ) {
+            //
+            // we are now going to pass the profile to the builder
+            // and the extensions so during payload_process will be
+            // taking care of them accordingly
+            //
+
+            python_obj.value().attr( "profile_load" )(
+               profile
+           ).cast<void>();
+        }
+
+        //
+        // do some post payload processing after retrieving
+        // the payload from the remote server plus the entire
+        // configuration we have to include into the payload
+        //
+        return python_obj.value().attr( "payload_process" )(
+            py11::bytes( payload.data(), payload.size() ),
+            context
+        ).cast<std::string>();
+    }
+
+    return std::nullopt;
+}
+
+auto HcPayloadBuild::clickedGenerate(
     void
 ) -> void {
     auto data   = json();
@@ -508,7 +629,7 @@ ERROR_SERVER_RESPONSE:
     );
 }
 
-auto HcDialogBuilder::clickedProfileSave(
+auto HcPayloadBuild::clickedProfileSave(
     void
 ) -> void {
     auto Dialog        = new QDialog();
@@ -623,7 +744,7 @@ auto HcDialogBuilder::clickedProfileSave(
     delete Dialog;
 }
 
-auto HcDialogBuilder::clickedProfileLoad(
+auto HcPayloadBuild::clickedProfileLoad(
     void
 ) -> void {
     auto dialog  = QFileDialog();
@@ -760,7 +881,7 @@ auto HcDialogBuilder::clickedProfileLoad(
     retranslateUi();
 }
 
-auto HcDialogBuilder::itemSelectProfile(
+auto HcPayloadBuild::itemSelectProfile(
     QListWidgetItem *item
 ) -> void {
     if ( !item ) {
@@ -791,7 +912,7 @@ auto HcDialogBuilder::itemSelectProfile(
 
     try {
         HcPythonAcquire();
-        object.value().attr( "profile_load" )( widget->profile ).cast<json>();
+        object.value().attr( "profile_load" )( widget->profile ).cast<void>();
     } catch ( std::exception& e ) {
         spdlog::error( "payload profile loading failure: {}", e.what() );
 
@@ -804,7 +925,7 @@ auto HcDialogBuilder::itemSelectProfile(
     }
 }
 
-auto HcDialogBuilder::contextMenuProfile(
+auto HcPayloadBuild::contextMenuProfile(
     const QPoint& pos
 ) -> void {
     auto menu = QMenu();
@@ -919,7 +1040,7 @@ auto HcDialogBuilder::contextMenuProfile(
     }
 }
 
-auto HcDialogBuilder::EventBuildLog(
+auto HcPayloadBuild::EventBuildLog(
     const QString& log
 ) -> void {
     //
@@ -928,7 +1049,7 @@ auto HcDialogBuilder::EventBuildLog(
     TextBuildLog->append( log );
 }
 
-auto HcDialogBuilder::BuilderObject(
+auto HcPayloadBuild::BuilderObject(
     const std::string& name
 ) -> std::optional<py11::object> {
 

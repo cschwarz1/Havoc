@@ -41,7 +41,7 @@ public:
     );
 };
 
-class HcDialogBuilder : public QDialog
+class HcPayloadBuild : public QDialog
 {
 public:
     QGridLayout*    gridLayout        = nullptr;
@@ -62,8 +62,8 @@ public:
 
     std::vector<Builder> Builders = {};
 
-    explicit HcDialogBuilder( QWidget* parent = nullptr );
-    ~HcDialogBuilder();
+    explicit HcPayloadBuild( QWidget* parent = nullptr );
+    ~HcPayloadBuild();
 
     auto retranslateUi() -> void;
 
@@ -71,6 +71,17 @@ public:
         const std::string&  name,
         const py11::object& object
     ) -> void;
+
+    auto generate(
+        const std::string& type,
+        const json&        profile
+    ) -> std::optional<std::string>;
+
+    auto generate(
+        const std::string& type,
+        const json&        profile,
+        std::string&       filename
+    ) -> std::optional<std::string>;
 
 private:
     auto BuilderObject(

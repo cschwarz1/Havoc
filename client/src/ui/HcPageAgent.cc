@@ -468,9 +468,9 @@ auto HcPageAgent::actionPayloadBuilder(
 ) -> void {
     HcPythonAcquire();
 
-    auto dialog = HcDialogBuilder();
+    auto dialog = HcPayloadBuild();
 
-    connect( Havoc->Gui, &HcMainWindow::signalBuildLog, &dialog, &HcDialogBuilder::EventBuildLog );
+    connect( Havoc->Gui, &HcMainWindow::signalBuildLog, &dialog, &HcPayloadBuild::EventBuildLog );
 
     //
     // if there was an error while loading or executing
