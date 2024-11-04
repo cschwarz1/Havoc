@@ -4,15 +4,6 @@ import os
 import sys
 import importlib.util
 
-
-class HcPyScriptMngrStdOutErrHandler:
-    def __init__( self ):
-        return
-
-    def write( self, data ):
-        core.HcIoConsoleWriteStdOut( data.encode( 'utf-8' ) )
-
-
 ##
 ## Callback function once the user decides
 ## to load a script into the client
@@ -33,6 +24,21 @@ def _HcPyScriptLoad(
 
     return
 
+
+class HcPyScriptMngrStdOutErrHandler:
+    def __init__( self ):
+        self.buffer = ''
+        return
+
+    def write( self, data ):
+        self.buffer += data
+        if '\n' in data:
+            self.flush()
+
+    def flush( self ):
+        if len( self.buffer ) > 0:
+            core.HcIoConsoleWriteStdOut( self.buffer.rstrip( '\n' ).encode( 'utf-8' ) )
+            self.buffer = ""
 
 ##
 ## redirect StdOut and StdErr
