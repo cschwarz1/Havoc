@@ -62,6 +62,10 @@ public:
         void
     ) -> void;
 
+    auto contextMenu(
+        const QPoint &pos
+    ) -> void;
+
 signals:
     auto SignalConsoleWrite(
         const QString& text

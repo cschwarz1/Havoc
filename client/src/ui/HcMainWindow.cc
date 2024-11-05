@@ -40,7 +40,7 @@ HcMainWindow::HcMainWindow() {
         setObjectName( QString::fromUtf8( "HcMainWindow" ) );
     }
 
-    resize( 1124, 659 );
+    resize( 1400, 800 );
 
     MainWidget = new QWidget( this );
     MainWidget->setObjectName( QString::fromUtf8( "MainWidget" ) );

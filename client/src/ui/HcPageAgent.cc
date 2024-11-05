@@ -328,21 +328,17 @@ auto HcPageAgent::handleAgentMenu(
 
     if ( auto action = menu.exec( AgentTable->horizontalHeader()->viewport()->mapToGlobal( pos ) ) ) {
         for ( const auto& selected : selections ) {
-            uuid = AgentTable->item( selected.row(), 0 )->text().toStdString();
+            uuid  = AgentTable->item( selected.row(), 0 )->text().toStdString();
+            agent = Agent( uuid );
 
             if ( action->text().compare( "Interact" ) == 0 ) {
                 spawnAgentConsole( uuid );
             } else if ( action->text().compare( "Remove" ) == 0 ) {
                 remove.push_back( Agent( uuid ).value() );
             } else if ( action->text().compare( "Hide" ) == 0 ) {
-                agent = Agent( uuid );
-
-
                 agent.value()->hidden = true;
                 agent.value()->hide();
             } else if ( action->text().compare( "Un-Hide" ) == 0 ) {
-                agent = Agent( uuid );
-
                 agent.value()->hidden = false;
                 agent.value()->unhide();
             } else {
@@ -350,8 +346,6 @@ auto HcPageAgent::handleAgentMenu(
                     if ( _action->name       == action->text().toStdString() &&
                          _action->agent.type == type
                     ) {
-                        agent = Havoc->Agent( uuid );
-
                         if ( agent.has_value() && agent.value()->interface.has_value() ) {
                             try {
                                 HcPythonAcquire();

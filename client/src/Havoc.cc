@@ -47,6 +47,7 @@ auto HcApplication::Main(
     auto found      = false;
     auto conn_entry = toml::value();
     auto message    = QMessageBox();
+    auto primary    = QGuiApplication::primaryScreen();
 
     if ( argc >= 2 ) {
         //
@@ -187,7 +188,7 @@ auto HcApplication::Main(
     // screen and starting up the Ui
     //
 
-    splash = new QSplashScreen( QGuiApplication::primaryScreen(), QPixmap( ":/images/splash-screen" ) );
+    splash = new QSplashScreen( primary, QPixmap( ":/images/splash-screen" ) );
     splash->show();
 
     Theme.setStyleSheet( stylesheet );
@@ -749,16 +750,21 @@ auto HcApplication::SetupThreads(
             //
             spdlog::info( "MetaWorker finished" );
             splash->close();
+
+            Gui->move(
+                QGuiApplication::primaryScreen()->geometry().center() - Gui->rect().center()
+            );
             Gui->renderWindow();
+
             Events.Thread->start();
         } );
 
         //
         // connect methods to add listeners, agents, etc. to the user interface (ui)
         //
-        connect( MetaWorker.Worker, &HcMetaWorker::AddListener,          Gui, &HcMainWindow::AddListener  );
-        connect( MetaWorker.Worker, &HcMetaWorker::AddAgent,             Gui, &HcMainWindow::AddAgent     );
-        connect( MetaWorker.Worker, &HcMetaWorker::AddAgentConsole,      Gui, &HcMainWindow::AgentConsole );
+        connect( MetaWorker.Worker, &HcMetaWorker::AddListener,     Gui, &HcMainWindow::AddListener  );
+        connect( MetaWorker.Worker, &HcMetaWorker::AddAgent,        Gui, &HcMainWindow::AddAgent     );
+        connect( MetaWorker.Worker, &HcMetaWorker::AddAgentConsole, Gui, &HcMainWindow::AgentConsole );
     }
 }
 
@@ -866,13 +872,7 @@ auto HcApplication::Agents() const -> std::vector<HcAgent*>
 auto HcApplication::Agent(
     const std::string& uuid
 ) const -> std::optional<HcAgent*> {
-    for ( auto agent : Gui->PageAgent->agents ) {
-        if ( agent->uuid == uuid ) {
-            return agent;
-        }
-    }
-
-    return std::nullopt;
+    return Gui->PageAgent->Agent( uuid );
 }
 
 auto HcApplication::AddAgentObject(
@@ -1036,6 +1036,18 @@ auto HcApplication::ScriptConfigProcess(
                 ScriptLoad( file.as_string() );
             }
         }
+    }
+
+    //
+    // load scripts from the profile now that
+    // have been previously loaded via the UI
+    //
+    for ( const auto script : ProfileQuery( "script" ) ) {
+        if ( !script.contains( "path" ) ) {
+            continue;
+        }
+
+        ScriptLoad( script.at( "path" ).as_string() );
     }
 }
 

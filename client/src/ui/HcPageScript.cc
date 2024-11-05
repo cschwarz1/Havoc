@@ -82,50 +82,76 @@ HcPagePlugins::HcPagePlugins()
 
     retranslateUi();
 
-    //
-    // signals
-    //
-    QObject::connect( this, & HcPagePlugins::SignalConsoleWrite, PyConsole, & HcPyConsole::append );
-
-    QObject::connect( ButtonLoad, &QPushButton::clicked, this, [&] () {
+    connect( this, &HcPagePlugins::SignalConsoleWrite, PyConsole, &HcPyConsole::append );
+    connect( TablePluginsWidget, &QTableWidget::customContextMenuRequested, this, &HcPagePlugins::contextMenu );
+    connect( ButtonLoad, &QPushButton::clicked, this, [&]() {
         auto dialog    = QFileDialog();
         auto plugin    = QUrl();
         auto exception = std::string();
 
-        dialog.setStyleSheet( HcApplication::StyleSheet() );
-        dialog.setDirectory( QDir::homePath() );
-
-        if ( LoadCallback.has_value() ) {
-            if ( dialog.exec() == QFileDialog::Accepted ) {
-                plugin = dialog.selectedUrls().value( 0 ).toLocalFile();
-                if ( ! plugin.toString().isNull() ) {
-                    try {
-                        HcPythonAcquire();
-                        LoadCallback.value()( py11::str( plugin.toString().toStdString() ) );
-                    } catch ( py11::error_already_set &eas ) {
-                        exception = eas.what();
-                    }
-
-                    if ( ! exception.empty() ) {
-                        //
-                        // print it to the python console
-                        //
-                        PyConsole->append( exception.c_str() );
-
-                        //
-                        // print it to the terminal console
-                        // as well
-                        //
-                        spdlog::error( "python callstack: \n{}", exception );
-                    }
-                }
-            }
-        } else {
+        if ( !LoadCallback.has_value() ) {
             Helper::MessageBox(
                 QMessageBox::Warning,
                 "Script Manager",
                 "No load script handler has been registered"
             );
+        }
+
+        dialog.setStyleSheet( HcApplication::StyleSheet() );
+        dialog.setDirectory( QDir::homePath() );
+        if ( dialog.exec() == QFileDialog::Reject ) {
+            return;
+        }
+
+        plugin = dialog.selectedUrls().value( 0 ).toLocalFile();
+        if ( !plugin.toString().isNull() ) {
+            try {
+                HcPythonAcquire();
+                LoadCallback.value()( plugin.toString().toStdString() ).cast<void>();
+
+                //
+                // since we loaded this over the UI button
+                // we are going to register the script be
+                // loaded from the start of the client
+                //
+
+                auto found = false;
+                for ( const auto& _profile : Havoc->ProfileQuery( "script" ) ) {
+                    //
+                    // sanity check if the script path
+                    // hasn't been already registered
+                    //
+
+                    if ( !_profile.contains( "path" ) ) {
+                        continue;
+                    }
+
+                    auto path = toml::find<std::string>( _profile, "path" );
+                    if ( path == plugin.toString().toStdString() ) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if ( found ) {
+                    spdlog::debug( "script path has already been registered" );
+                    return;
+                }
+
+                Havoc->ProfileInsert( "script", toml::table {
+                    { "path", plugin.toString().toStdString() }
+                } );
+
+                AddScriptPath( plugin.toString() );
+            } catch ( py11::error_already_set &eas ) {
+                //
+                // print the exception to the python UI widget
+                // console and to the client console
+                //
+                auto fmt = std::format( "failed to load script {}: \n{}", plugin.toString().toStdString(), eas.what() );
+                PyConsole->append( QString::fromStdString( fmt ) );
+                spdlog::error( "{}", fmt );
+            }
         }
     } );
 
@@ -155,12 +181,17 @@ auto HcPagePlugins::LoadScript(
         try {
             HcPythonAcquire();
 
-            LoadCallback.value()( path );
+            LoadCallback.value()( path ).cast<void>();
 
             AddScriptPath( path.c_str() );
         } catch ( py11::error_already_set &eas ) {
-            spdlog::error( "failed to load script {}: \n{}", path, eas.what() );
-            PyConsole->append( std::format( "failed to load script {}: \n{}", path, eas.what() ).c_str() );
+            //
+            // print the exception to the python UI widget
+            // console and to the client console
+            //
+            auto fmt = std::format( "failed to load script {}: \n{}", path, eas.what() );
+            PyConsole->append( QString::fromStdString( fmt ) );
+            spdlog::error( "{}", fmt );
         }
     } else {
         spdlog::debug( "PageScripts->LoadCallback not set" );
@@ -263,6 +294,58 @@ auto HcPagePlugins::processPlugins(
         } else {
             plugins.mkpath( "." );
         }
+    }
+}
+
+auto HcPagePlugins::contextMenu(
+    const QPoint& pos
+) -> void {
+    auto menu       = QMenu();
+    auto path       = std::string();
+    auto selections = TablePluginsWidget->selectionModel()->selectedRows();
+
+    menu.setStyleSheet( HcApplication::StyleSheet() );
+    menu.addAction( "Remove" );
+
+    auto action = menu.exec( TablePluginsWidget->viewport()->mapToGlobal( pos ) );
+    if ( !action ) {
+        return;
+    }
+
+    if ( action->text().toStdString() == "Remove" ) {
+        for ( const auto& selected : selections ) {
+            path = TablePluginsWidget->item( selected.row(), 0 )->text().toStdString();
+
+            //
+            // remove from UI script table
+            //
+            TablePluginsWidget->removeRow( selected.row() );
+
+            //
+            // remove from profile setting to avoid it
+            // getting loaded again into the client after
+            // restarting
+            //
+            int index = 0;
+            for ( const auto& _profile : Havoc->ProfileQuery( "script" ) ) {
+                if ( !_profile.contains( "path" ) ) {
+                    continue;
+                }
+
+                if ( _profile.at( "path" ).as_string() == path ) {
+                    Havoc->ProfileDelete( "script", index );
+                    break;
+                }
+
+                ++index;
+            }
+        }
+
+        Helper::MessageBox(
+            QMessageBox::Warning,
+            "Script Unloaded",
+            "restart the client to fully remove the loaded script"
+        );
     }
 }
 

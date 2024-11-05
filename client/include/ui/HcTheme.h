@@ -15,6 +15,24 @@
     auto HcTheme::get ## color() const -> QColor { return color; }  \
     auto HcTheme::set ## color( QColor c ) -> void { color = c; }
 
+//
+// TODO: rewrite the HcTheme system and include
+//       more descriptive methods for specific
+//       themes such as.
+//       - AgentTableEntryHiddenBackground
+//       - AgentTableEntryBackground
+//       - AgentConnectionArrowDirect
+//       - AgentConnectionArrowPivot
+//       - AgentConnectionArrowDisconnected
+//       - AgentConnectionArrowUnresponsive
+//       - AgentConnectionArrowDirectPulsate
+//       - AgentConnectionArrowPivotPulsate
+//       - AgentConsoleBackground
+//       - AgentConsoleForeground
+//       - AgentConsole{Colors}
+//       and more options to style the UI
+//
+
 class HcTheme : public QWidget {
     Q_OBJECT
 
