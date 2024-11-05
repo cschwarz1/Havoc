@@ -302,19 +302,9 @@ auto HcAgentProfileBuild(
     try {
         payload = HcPayloadBuild().generate( agent_type, profile );
     } catch ( std::exception& e ) {
-        //
-        // since we have captured an exception
-        // while generating the payload we are
-        // going to get the python gil and throw
-        // the exception in python as well
-        //
         throw py11::value_error( e.what() );
     }
 
-    //
-    // acquire the gil to create a
-    // python bytes object to return
-    //
     return py::bytes( payload.value() );
 }
 
