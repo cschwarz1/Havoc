@@ -303,9 +303,10 @@ auto HcPagePlugins::contextMenu(
     auto menu       = QMenu();
     auto path       = std::string();
     auto selections = TablePluginsWidget->selectionModel()->selectedRows();
+    auto rows       = std::vector<int>();
 
     menu.setStyleSheet( HcApplication::StyleSheet() );
-    menu.addAction( "Remove" );
+    menu.addAction( QIcon( ":/icons/16px-remove" ), "Remove" );
 
     auto action = menu.exec( TablePluginsWidget->viewport()->mapToGlobal( pos ) );
     if ( !action ) {
@@ -315,17 +316,14 @@ auto HcPagePlugins::contextMenu(
     if ( action->text().toStdString() == "Remove" ) {
         for ( const auto& selected : selections ) {
             path = TablePluginsWidget->item( selected.row(), 0 )->text().toStdString();
-
-            //
-            // remove from UI script table
-            //
-            TablePluginsWidget->removeRow( selected.row() );
+            rows.push_back( selected.row() );
 
             //
             // remove from profile setting to avoid it
             // getting loaded again into the client after
             // restarting
             //
+
             int index = 0;
             for ( const auto& _profile : Havoc->ProfileQuery( "script" ) ) {
                 if ( !_profile.contains( "path" ) ) {
@@ -341,6 +339,16 @@ auto HcPagePlugins::contextMenu(
             }
         }
 
+        std::ranges::sort( rows, std::greater<int>() );
+        for ( const auto& row : rows ) {
+            //
+            // remove from UI script table
+            //
+            TablePluginsWidget->removeRow( row );
+        }
+
+        retranslateUi();
+        
         Helper::MessageBox(
             QMessageBox::Warning,
             "Script Unloaded",
