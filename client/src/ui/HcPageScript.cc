@@ -348,7 +348,7 @@ auto HcPagePlugins::contextMenu(
         }
 
         retranslateUi();
-        
+
         Helper::MessageBox(
             QMessageBox::Warning,
             "Script Unloaded",

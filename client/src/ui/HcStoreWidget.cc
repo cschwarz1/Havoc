@@ -22,7 +22,9 @@ public:
             //
             // is remote/link image resource
             //
-            if ( ! name.isLocalFile() ) {
+            if ( !name.isLocalFile() ) {
+                spdlog::debug( "loadResource( {} )", name.toString().toStdString() );
+
                 auto [status, response, _] = Havoc->RequestSend(
                     name.toString().toStdString(),
                     std::string(),
@@ -391,7 +393,16 @@ auto HcStoreWidget::AddPlugin(
 
     plugin->LabelName->setText( std::format( "<a href=\"{}\" style=\"color: #8BE9FD; text-decoration:none; font-size:18pt;\"><span>{}</span></a>", project_url, plugin->name ).c_str() );
     plugin->LabelDescription->setText( description.c_str() );
-    plugin->TextReadme->setMarkdown( readme.c_str() );
+    plugin->TextReadme->setMarkdown( QString::fromStdString( readme ) );
+
+    //
+    // NOTE: forcefully trigger an loadResource call to
+    //       retrieve and load the resources (images, etc.)
+    //       from the external servers
+    //
+    auto pixmap  = QPixmap( 1, 1 );
+    auto painter = QPainter( &pixmap );
+    plugin->TextReadme->render( &painter );
 
     //
     // add plugin object to the vector array and to the stack widget
