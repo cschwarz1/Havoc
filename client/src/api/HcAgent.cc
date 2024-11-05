@@ -297,8 +297,8 @@ auto HcAgentProfileBuild(
     const std::string& agent_type,
     const json&        profile
 ) -> py::bytes {
-    auto builder   = HcPayloadBuild();
-    auto payload   = std::optional<std::string>();
+    auto builder = HcPayloadBuild();
+    auto payload = std::optional<std::string>();
 
     try {
         payload = builder.generate( agent_type, profile );
@@ -309,7 +309,6 @@ auto HcAgentProfileBuild(
         // going to get the python gil and throw
         // the exception in python as well
         //
-        auto acquire = py::gil_scoped_acquire();
         throw py11::value_error( e.what() );
     }
 
@@ -317,13 +316,12 @@ auto HcAgentProfileBuild(
     // acquire the gil to create a
     // python bytes object to return
     //
-    auto acquire = py::gil_scoped_acquire();
     return py::bytes( payload.value() );
 }
 
 /*!
  * @brief
- * pop up a dialog to choose between available profiles and return
+ *  pop up a dialog to choose between available profiles and return
  *
  * @param agent_type
  *  agent type to list. if empty all available

@@ -145,4 +145,6 @@ HcPyEngine::HcPyEngine() {
 HcPyEngine::~HcPyEngine() {
     PyThreadState_Clear( state );
     PyThreadState_Delete( state );
+
+    delete guard;
 };
