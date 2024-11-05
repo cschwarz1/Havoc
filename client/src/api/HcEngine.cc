@@ -83,6 +83,9 @@ PYBIND11_EMBEDDED_MODULE( _pyhavoc, m ) {
             Helper::MessageBox( static_cast<QMessageBox::Icon>( icon ), title, text );
         }, py::call_guard<py::gil_scoped_release>() );
 
+        //
+        // TODO: move this back to the listener module
+        //
         ui.def(
             "HcListenerPopupSelect", HcListenerPopupSelect,
             py::call_guard<pybind11::gil_scoped_release>()
@@ -104,13 +107,14 @@ PYBIND11_EMBEDDED_MODULE( _pyhavoc, m ) {
         agent.def( "HcAgentConsoleHeader",      HcAgentConsoleHeader );
         agent.def( "HcAgentConsoleLabel",       HcAgentConsoleLabel );
         agent.def( "HcAgentConsoleWrite",       HcAgentConsoleWrite, py::call_guard<py::gil_scoped_release>() );
-        agent.def( "HcAgentConsoleInput",       []( const py11::object& eval ) { Havoc->PyEngine->PyEval = eval; } );
         agent.def( "HcAgentConsoleAddComplete", HcAgentConsoleAddComplete );
         agent.def( "HcAgentExecute",            HcAgentExecute, py::call_guard<py::gil_scoped_release>() );
         agent.def( "HcAgentRegisterMenuAction", HcAgentRegisterMenuAction );
 
-        agent.def( "HcAgentProfileBuild",  HcAgentProfileBuild  );
         agent.def( "HcAgentProfileSelect", HcAgentProfileSelect, py::call_guard<py::gil_scoped_release>() );
+        agent.def( "HcAgentProfileQuery",  HcAgentProfileQuery  );
+        agent.def( "HcAgentProfileList",   HcAgentProfileList   );
+        agent.def( "HcAgentProfileBuild",  HcAgentProfileBuild  );
     }
 }
 

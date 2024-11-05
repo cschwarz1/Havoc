@@ -450,3 +450,91 @@ LEAVE:
 
     return Profile;
 }
+
+/*!
+ * @brief
+ *  query a specific profile
+ *
+ * @param profile
+ *  profile name to query
+ *
+ * @return
+ *  profile object
+ */
+auto HcAgentProfileQuery(
+    const std::string& profile
+) -> json {
+    auto name = std::string();
+    auto type = std::string();
+    auto conf = json();
+
+    if ( profile.empty() ) {
+        throw std::runtime_error( "profile name is empty" );
+    }
+
+    for ( const auto& _profile : Havoc->ProfileQuery( "profile" ) ) {
+        if ( !_profile.contains( "name" ) ||
+             !_profile.contains( "type" ) ||
+             !_profile.contains( "profile" )
+        ) {
+            continue;
+        };
+
+        name = toml::find<std::string>( _profile, "name" );
+        type = toml::find<std::string>( _profile, "type" );
+        if ( ( conf = json::parse( toml::find<std::string>( _profile, "profile" ) ) ).is_discarded() ) {
+            throw std::runtime_error( "failed to parse profile: has been discarded" );
+        };
+
+        if ( name != profile ) {
+            continue;
+        };
+
+        return json {
+            { "name",    name },
+            { "type",    type },
+            { "profile", conf },
+        };
+    };
+
+    throw std::runtime_error( "profile has not been found" );
+}
+
+/*!
+ * @brief
+ *  return all registered profiles
+ *
+ * @return
+ *  list of profiles
+ */
+auto HcAgentProfileList(
+    void
+) -> std::vector<json> {
+    auto name = std::string();
+    auto type = std::string();
+    auto conf = json();
+    auto list = std::vector<json>();
+
+    for ( const auto& _profile : Havoc->ProfileQuery( "profile" ) ) {
+        if ( !_profile.contains( "name" ) ||
+             !_profile.contains( "type" ) ||
+             !_profile.contains( "profile" )
+        ) {
+            continue;
+        };
+
+        name = toml::find<std::string>( _profile, "name" );
+        type = toml::find<std::string>( _profile, "type" );
+        if ( ( conf = json::parse( toml::find<std::string>( _profile, "profile" ) ) ).is_discarded() ) {
+            throw std::runtime_error( "failed to parse profile: has been discarded" );
+        };
+
+        list.push_back( json {
+            { "name",    name },
+            { "type",    type },
+            { "profile", conf },
+        } );
+    };
+
+    return list;
+}

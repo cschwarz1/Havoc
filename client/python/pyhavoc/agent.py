@@ -1,3 +1,5 @@
+from typing import Optional
+
 from _pyhavoc import agent
 
 
@@ -48,12 +50,20 @@ def HcAgentUnRegisterCallback( callback ):
     agent.HcAgentUnRegisterCallback( callback )
 
 
-def HcAgentProfileSelect( agent_type: str = "" ) -> dict:
+def HcAgentProfileSelect( agent_type: str = "" ) -> Optional[dict]:
     return agent.HcAgentProfileSelect( agent_type )
 
 
 def HcAgentProfileBuild( agent_type: str, profile: dict ) -> bytes:
     return agent.HcAgentProfileBuild( agent_type, profile )
+
+
+def HcAgentProfileList() -> list[dict]:
+    return agent.HcAgentProfileList()
+
+
+def HcAgentProfileQuery( profile: str ) -> dict:
+    return agent.HcAgentProfileQuery( profile )
 
 
 def HcAgentExecute(

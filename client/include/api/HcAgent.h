@@ -61,4 +61,12 @@ auto HcAgentProfileSelect(
     const std::string& agent_type = ""
 ) -> std::optional<json>;
 
+auto HcAgentProfileQuery(
+    const std::string& profile
+) -> json;
+
+auto HcAgentProfileList(
+    void
+) -> std::vector<json>;
+
 #endif //HAVOCCLIENT_API_HCAGENT_H
