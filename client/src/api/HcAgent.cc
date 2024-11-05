@@ -297,11 +297,10 @@ auto HcAgentProfileBuild(
     const std::string& agent_type,
     const json&        profile
 ) -> py::bytes {
-    auto builder = HcPayloadBuild();
     auto payload = std::optional<std::string>();
 
     try {
-        payload = builder.generate( agent_type, profile );
+        payload = HcPayloadBuild().generate( agent_type, profile );
     } catch ( std::exception& e ) {
         //
         // since we have captured an exception
