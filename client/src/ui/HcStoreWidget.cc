@@ -415,8 +415,7 @@ auto HcStoreWidget::AddPlugin(
     // insert the plugin into the market list
     //
     auto group = std::string( "local" );
-
-    if ( ! repo.empty() ) {
+    if ( !repo.empty() ) {
         //
         // is remote repository plugin
         //
@@ -430,7 +429,7 @@ auto HcStoreWidget::AddPlugin(
         // if the path/directory exists
         // then it means we installed it
         //
-        ( ( HcMarketPluginItem* ) plugin->ListWidget )->setInstalled();
+        dynamic_cast<HcMarketPluginItem*>( plugin->ListWidget )->setInstalled();
         plugin->ButtonInstall->setText( "Uninstall" );
         plugin->ButtonInstall->setProperty( "HcButtonInstall", "uninstall" );
         plugin->ButtonInstall->style()->polish( plugin->ButtonInstall );

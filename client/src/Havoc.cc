@@ -6,10 +6,6 @@ HcApplication::HcApplication() {
     spdlog::set_pattern( "[%T %^%l%$] %v" );
     spdlog::info( "Havoc Framework [{} :: {}]", HAVOC_VERSION, HAVOC_CODENAME );
 
-    /* TODO: read this from the config file */
-    const auto family = "Monospace";
-    const auto size   = 9;
-
 #ifdef Q_OS_MAC
     //
     // original fix and credit: https://github.com/HavocFramework/Havoc/pull/466/commits/8b75de9b4632a266badf64e1cc22e57cc55a5b7c
@@ -17,12 +13,7 @@ HcApplication::HcApplication() {
     QApplication::setStyle( "Fusion" );
 #endif
 
-    //
-    // set font
-    //
     QTextCodec::setCodecForLocale( QTextCodec::codecForName( "UTF-8" ) );
-    QApplication::setFont( QFont( family, size ) );
-    QTimer::singleShot( 10, [&]() { QApplication::setFont( QFont( family, size ) ); } );
 }
 
 HcApplication::~HcApplication() = default;
@@ -39,7 +30,6 @@ auto HcApplication::Main(
     int    argc,
     char** argv
 ) -> void {
-    auto connector  = new HcConnectDialog();
     auto response   = json();
     auto data       = json();
     auto error      = std::string( "Failed to send login request: " );
@@ -70,13 +60,14 @@ auto HcApplication::Main(
     }
 
     ProfileSync();
+    ParseConfig();
 
     //
     // display the operator with the connection
     // dialog and saved profile connections and
     // save the connection details in the profile
     //
-
+    auto connector = new HcConnectDialog();
     if ( ( data = connector->start() ).empty() || ( ! connector->connected() ) ) {
         return;
     }
@@ -897,6 +888,39 @@ auto HcApplication::AgentObject(
     return std::nullopt;
 }
 
+auto HcApplication::ParseConfig(
+    void
+) -> void {
+    auto config_path = QFile();
+    auto font_tbl    = toml::table();
+    auto font_family = std::string();
+    auto font_size   = 0lu;
+
+    config_path.setFileName( client_dir.path() + "/config.toml" );
+    config_path.open( QIODevice::ReadWrite );
+
+    try {
+        config = toml::parse( config_path.fileName().toStdString() );
+    } catch ( std::exception& e ) {
+        spdlog::error( "failed to parse toml configuration: {}", e.what() );
+        return;
+    }
+
+    if ( config.contains( "font" ) ) {
+        font_tbl = config.at( "font" ).as_table();
+
+        if ( font_tbl.contains( "family" ) ) {
+            font_family = font_tbl.at( "family" ).as_string();
+        }
+
+        if ( font_tbl.contains( "size" ) ) {
+            font_size = font_tbl.at( "size" ).as_integer();
+        }
+
+        QApplication::setFont( QFont( QString::fromStdString( font_family ), font_size ) );
+    }
+}
+
 auto HcApplication::Callbacks() -> std::vector<std::string>
 {
     auto names = std::vector<std::string>();
@@ -950,8 +974,7 @@ auto HcApplication::CallbackObject(
 auto HcApplication::SetupDirectory(
     void
 ) -> bool {
-    auto havoc_dir   = QDir( QDir::homePath() + "/.havoc" );
-    auto config_path = QFile();
+    auto havoc_dir = QDir( QDir::homePath() + "/.havoc" );
 
     if ( ! havoc_dir.exists() ) {
         if ( ! havoc_dir.mkpath( "." ) ) {
@@ -964,16 +987,6 @@ auto HcApplication::SetupDirectory(
         if ( ! client_dir.mkpath( "." ) ) {
             return false;
         }
-    }
-
-    config_path.setFileName( client_dir.path() + "/config.toml" );
-    config_path.open( QIODevice::ReadWrite );
-
-    try {
-        config = toml::parse( config_path.fileName().toStdString() );
-    } catch ( std::exception& e ) {
-        spdlog::error( "failed to parse toml configuration: {}", e.what() );
-        return false;
     }
 
     return true;

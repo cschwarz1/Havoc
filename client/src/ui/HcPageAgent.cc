@@ -582,8 +582,8 @@ auto HcPageAgent::removeAgent(
         delete agent;
     }
 
-    AgentDisplayerSessions->setText( QString( "Sessions: %1" ).arg( agents.size() ) ); /* TODO: only set current alive beacons/sessions */
-    AgentDisplayerPivots->setText( QString( "Pivots: %1" ).arg( is_pivot ? --pivots : pivots ) ); /* TODO: only set current alive beacons/sessions */
+    AgentDisplayerSessions->setText( QString( "Sessions: %1" ).arg( agents.size() ) );
+    AgentDisplayerPivots->setText( QString( "Pivots: %1" ).arg( is_pivot ? --pivots : pivots ) );
 }
 
 HcDescriptionDelegate::HcDescriptionDelegate(

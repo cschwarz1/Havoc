@@ -154,6 +154,10 @@ public:
         void
     ) -> QDir { return client_dir; };
 
+    auto ParseConfig(
+        void
+    ) -> void;
+
     //
     // Callbacks
     //
