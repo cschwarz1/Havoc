@@ -911,10 +911,16 @@ auto HcApplication::ParseConfig(
 
         if ( font_tbl.contains( "family" ) ) {
             font_family = font_tbl.at( "family" ).as_string();
+        } else {
+            spdlog::error( "failed to parse font: font family not found" );
+            return;
         }
 
         if ( font_tbl.contains( "size" ) ) {
             font_size = font_tbl.at( "size" ).as_integer();
+        } else {
+            spdlog::error( "failed to parse font: font size not found" );
+            return;
         }
 
         QApplication::setFont( QFont( QString::fromStdString( font_family ), font_size ) );
