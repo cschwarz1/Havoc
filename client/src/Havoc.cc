@@ -60,14 +60,19 @@ auto HcApplication::Main(
     }
 
     ProfileSync();
-    ParseConfig();
+
+    if ( !ParseConfig() ) {
+        spdlog::error( "failed to parse configuration. aborting" );
+        return;
+    };
 
     //
     // display the operator with the connection
     // dialog and saved profile connections and
     // save the connection details in the profile
     //
-    auto connector = new HcConnectDialog();
+    const auto connector = new HcConnectDialog();
+
     if ( ( data = connector->start() ).empty() || ( ! connector->connected() ) ) {
         return;
     }
@@ -890,7 +895,7 @@ auto HcApplication::AgentObject(
 
 auto HcApplication::ParseConfig(
     void
-) -> void {
+) -> bool {
     auto config_path = QFile();
     auto font_tbl    = toml::table();
     auto font_family = std::string();
@@ -903,7 +908,7 @@ auto HcApplication::ParseConfig(
         config = toml::parse( config_path.fileName().toStdString() );
     } catch ( std::exception& e ) {
         spdlog::error( "failed to parse toml configuration: {}", e.what() );
-        return;
+        return false;
     }
 
     if ( config.contains( "font" ) ) {
@@ -913,18 +918,20 @@ auto HcApplication::ParseConfig(
             font_family = font_tbl.at( "family" ).as_string();
         } else {
             spdlog::error( "failed to parse font: font family not found" );
-            return;
+            return false;
         }
 
         if ( font_tbl.contains( "size" ) ) {
             font_size = font_tbl.at( "size" ).as_integer();
         } else {
             spdlog::error( "failed to parse font: font size not found" );
-            return;
+            return false;
         }
 
         QApplication::setFont( QFont( QString::fromStdString( font_family ), font_size ) );
     }
+
+    return true;
 }
 
 auto HcApplication::Callbacks() -> std::vector<std::string>

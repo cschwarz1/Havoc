@@ -156,7 +156,7 @@ public:
 
     auto ParseConfig(
         void
-    ) -> void;
+    ) -> bool;
 
     //
     // Callbacks
