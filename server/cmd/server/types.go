@@ -1,6 +1,7 @@
 package server
 
 import (
+	"Havoc/pkg"
 	"Havoc/pkg/api"
 	"Havoc/pkg/db"
 	"Havoc/pkg/plugin"
@@ -72,8 +73,8 @@ type Teamserver struct {
 	listener  []Listener // started listeners
 
 	// registered implant types and agent sessions
-	payloads []Handler // available payload types
-	agents   sync.Map  // current connected agent sessions
+	payloads []Handler     // available payload types
+	agents   pkg.HcSyncMap // current connected agent sessions
 
 	// registered agent commands by external plugins and protocols
 	// which allows to extend the implants commands to add additional

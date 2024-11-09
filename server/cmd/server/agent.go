@@ -113,7 +113,7 @@ func (t *Teamserver) AgentRemove(uuid string) error {
 func (t *Teamserver) AgentList() []string {
 	var list []string
 
-	t.agents.Range(func(k, v interface{}) bool {
+	t.agents.Range(func(k string, v any) bool {
 		agent := v.(*Agent)
 		list = append(list, agent.uuid)
 		return true
