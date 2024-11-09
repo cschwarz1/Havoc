@@ -282,6 +282,95 @@ auto HcAgentRegisterMenuAction(
 
 /*!
  * @brief
+ *  register a callback for agent initialization
+ *
+ * @param type
+ *  agent type to register callback for
+ *
+ * @param callback
+ *  python callback function to
+ *  call on agent initialization
+ */
+auto HcAgentRegisterInitialize(
+    const std::string&  type,
+    const py11::object& callback
+) -> void {
+    spdlog::debug( "HcAgentRegisterInitialize( {}, ... )", type );
+
+    Havoc->AddInitializeEvent( type, callback );
+}
+
+/*!
+ * @brief
+ *  register an icon for the agent session
+ *
+ * @param uuid
+ *  agent uuid session
+ *
+ * @param icon
+ *  icon buffer to use
+ */
+auto HcAgentRegisterIcon(
+    const std::string& uuid,
+    const std::string& icon
+) -> void {
+    const auto agent = Havoc->Agent( uuid );
+    const auto image = QImage::fromData( QByteArray::fromStdString( icon ) );
+
+    if ( agent.has_value() ) {
+        emit agent.value()->ui.signal.RegisterIcon(
+            QString::fromStdString( uuid ),
+            image
+        );
+    }
+}
+
+/*!
+ * @brief
+ *  register a pre-existing icon
+ *  name for the agent session
+ *
+ * @param uuid
+ *  agent uuid session
+ *
+ * @param name
+ *  icon name to use
+ */
+auto HcAgentRegisterIconName(
+    const std::string& uuid,
+    const std::string& name
+) -> void {
+    const auto agent = Havoc->Agent( uuid );
+
+    if ( name != "linux"           &&
+         name != "linux-high"      &&
+         name != "macos"           &&
+         name != "macos-high"      &&
+         name != "unknown"         &&
+         name != "unknown-high"    &&
+         name != "win7-vista"      &&
+         name != "win7-vista-high" &&
+         name != "win10-8"         &&
+         name != "win10-8-high"    &&
+         name != "win11"           &&
+         name != "win11-high"      &&
+         name != "winxp"           &&
+         name != "winxp-high"
+    ) {
+        spdlog::debug( "[ERROR] HcAgentRegisterIconName( {}, {} ): unknown icon name", uuid, name );
+        return;
+    }
+
+    if ( agent.has_value() ) {
+        emit agent.value()->ui.signal.RegisterIconName(
+            QString::fromStdString( uuid ),
+            QString::fromStdString( name )
+        );
+    }
+}
+
+/*!
+ * @brief
  *  generate an agent payload binary from the specified profile
  *
  * @param agent_type

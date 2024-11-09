@@ -35,7 +35,7 @@ auto HcHeartbeatWorker::updateHeartbeats() -> void
         // parse the last called time, calculate the difference,
         // and get seconds, minutes, hours and days from it
         //
-        auto last    = QDateTime::fromString( agent->last, format );
+        auto last    = QDateTime::fromString( QString::fromStdString( agent->last ), format );
         auto current = QDateTime::currentDateTimeUtc();
         auto diff    = last.secsTo( current );
         auto days    = diff / ( 24 * 3600 );

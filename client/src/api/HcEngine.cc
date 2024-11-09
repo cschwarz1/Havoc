@@ -101,7 +101,19 @@ PYBIND11_EMBEDDED_MODULE( _pyhavoc, m ) {
             "havoc client agent api"
         );
 
-        agent.def( "HcAgentRegisterInterface",  HcAgentRegisterInterface );
+        //
+        // meta agent api functions
+        //
+
+        agent.def( "HcAgentRegisterInterface",  HcAgentRegisterInterface  );
+        agent.def( "HcAgentRegisterMenuAction", HcAgentRegisterMenuAction );
+        agent.def( "HcAgentRegisterInitialize", HcAgentRegisterInitialize );
+
+        //
+        // agent instance api functions
+        //
+
+        agent.def( "HcAgentRegisterIcon",       HcAgentRegisterIcon );
         agent.def( "HcAgentRegisterCallback",   HcAgentRegisterCallback  );
         agent.def( "HcAgentUnRegisterCallback", HcAgentUnRegisterCallback  );
         agent.def( "HcAgentConsoleHeader",      HcAgentConsoleHeader );
@@ -109,7 +121,12 @@ PYBIND11_EMBEDDED_MODULE( _pyhavoc, m ) {
         agent.def( "HcAgentConsoleWrite",       HcAgentConsoleWrite, py::call_guard<py::gil_scoped_release>() );
         agent.def( "HcAgentConsoleAddComplete", HcAgentConsoleAddComplete );
         agent.def( "HcAgentExecute",            HcAgentExecute, py::call_guard<py::gil_scoped_release>() );
-        agent.def( "HcAgentRegisterMenuAction", HcAgentRegisterMenuAction );
+        agent.def( "HcAgentRegisterIconName",   HcAgentRegisterIconName );
+        agent.def( "HcAgentRegisterIcon",       HcAgentRegisterIcon );
+
+        //
+        // agent profile & generation functions
+        //
 
         agent.def( "HcAgentProfileSelect", HcAgentProfileSelect, py::call_guard<py::gil_scoped_release>() );
         agent.def( "HcAgentProfileQuery",  HcAgentProfileQuery  );

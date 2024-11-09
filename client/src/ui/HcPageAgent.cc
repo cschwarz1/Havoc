@@ -219,9 +219,22 @@ auto HcPageAgent::addAgent(
     // bind the initialized agent to
     // the console write signals
     //
-    connect( & agent->ui.signal, & HcAgentSignals::ConsoleWrite, this, []( const QString& uuid, const QString& text ) {
+
+    connect( &agent->ui.signal, &HcAgentSignals::ConsoleWrite, this, []( const QString& uuid, const QString& text ) {
         if ( const auto _agent = Havoc->Agent( uuid.toStdString() ); _agent.has_value() ) {
             _agent.value()->console->appendConsole( HcConsole::formatString( text.toStdString() ).c_str() );
+        }
+    } );
+
+    connect( &agent->ui.signal, &HcAgentSignals::RegisterIcon, this, []( const QString& uuid, const QImage& icon ) {
+        if ( const auto _agent = Havoc->Agent( uuid.toStdString() ); _agent.has_value() ) {
+            _agent.value()->image = icon;
+        }
+    } );
+
+    connect( &agent->ui.signal, &HcAgentSignals::RegisterIconName, this, []( const QString& uuid, const QString& name ) {
+        if ( const auto _agent = Havoc->Agent( uuid.toStdString() ); _agent.has_value() ) {
+            _agent.value()->image = QImage( std::format( ":/graph/{}", name.toStdString() ).c_str() );
         }
     } );
 

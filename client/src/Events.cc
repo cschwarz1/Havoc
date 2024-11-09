@@ -385,7 +385,7 @@ auto HcApplication::eventDispatch(
         if ( auto _value = Agent( uuid ); _value.has_value() ) {
             auto agent = _value.value();
 
-            agent->last = QString( time.c_str() );
+            agent->last = time;
 
             //
             // update the pulsation inside the graph

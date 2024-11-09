@@ -1037,6 +1037,31 @@ auto HcApplication::Actions(
     return actions_type;
 }
 
+auto HcApplication::AddInitializeEvent(
+    const std::string&  type,
+    const py11::object& object
+) -> void {
+    init_events.push_back( NamedObject{
+        .name   = type,
+        .object = object
+    } );
+}
+
+auto HcApplication::InitializeEvents(
+    void
+) -> std::vector<std::tuple<
+    std::string,
+    py11::object
+>> {
+    auto list = std::vector<std::tuple<std::string, py11::object>>();
+
+    for ( const auto& [name, object] : init_events ) {
+        list.push_back( std::make_tuple( name, object ) );
+    }
+
+    return list;
+}
+
 auto HcApplication::ScriptLoad(
     const std::string& path
 ) const -> void {
@@ -1068,7 +1093,7 @@ auto HcApplication::ScriptConfigProcess(
     // load scripts from the profile now that
     // have been previously loaded via the UI
     //
-    for ( const auto script : ProfileQuery( "script" ) ) {
+    for ( const auto& script : ProfileQuery( "script" ) ) {
         if ( !script.contains( "path" ) ) {
             continue;
         }

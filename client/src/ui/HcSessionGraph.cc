@@ -727,7 +727,7 @@ auto HcSessionGraphItem::paint(
             //
         }
 
-        painter->drawImage( rect, QImage( ":/graph/win11" ) );
+        painter->drawImage( rect, _agent->image );
     }
 
     //

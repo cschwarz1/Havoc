@@ -287,11 +287,12 @@ auto HcMainWindow::AddListener(
 
 auto HcMainWindow::AddAgent(
     const json& metadata
-) -> void {
+) -> std::optional<HcAgent*> {
     const auto agent = new HcAgent( metadata );
-    if ( ! agent->initialize() ) {
+
+    if ( !agent->initialize() ) {
         spdlog::debug( "[HcPageAgent::addAgent] failed to initialize agent" );
-        return;
+        return std::nullopt;
     }
 
     PageAgent->addAgent( agent );
@@ -300,6 +301,8 @@ auto HcMainWindow::AddAgent(
     // post-processing of the agent
     //
     agent->post();
+
+    return agent;
 }
 
 auto HcMainWindow::RemoveAgent(

@@ -22,6 +22,16 @@ signals:
         const QString& uuid,
         const QString& time
     ) -> void;
+
+    auto RegisterIcon(
+        const QString& uuid,
+        const QImage&  icon
+    ) -> void;
+
+    auto RegisterIconName(
+        const QString& uuid,
+        const QString& name
+    ) -> void;
 };
 
 struct HcAgent;
@@ -41,15 +51,17 @@ public:
 };
 
 struct HcAgent {
-    std::string                 uuid;
-    std::string                 type;
-    std::string                 parent;
-    json                        data;
+    std::string uuid;
+    std::string type;
+    std::string parent;
+    std::string status;
+    std::string last;
+    json        data;
+
     std::optional<py11::object> interface;
     HcAgentConsole*             console;
-    QString                     last;
-    std::string                 status;
     bool                        hidden;
+    QImage                      image;
 
     struct {
         HcSessionGraphItem* node;

@@ -4,9 +4,44 @@
 #include <Common.h>
 #include <api/Engine.h>
 
+//
+// meta agent api functions
+//
+
 auto HcAgentRegisterInterface(
     const std::string&  type,
     const py11::object& object
+) -> void;
+
+auto HcAgentRegisterMenuAction(
+    const std::string&  agent_type,
+    const std::string&  name,
+    const std::string&  icon_path,
+    const py11::object& callback
+) -> void;
+
+auto HcAgentRegisterInitialize(
+    const std::string&  type,
+    const py11::object& callback
+) -> void;
+
+//
+// agent instance api functions
+//
+
+auto HcAgentRegisterIcon(
+    const std::string& uuid,
+    const std::string& icon
+) -> void;
+
+auto HcAgentRegisterIconName(
+    const std::string& uuid,
+    const std::string& name
+) -> void;
+
+auto HcAgentSetElevated(
+    const std::string& uuid,
+    const bool         elevated
 ) -> void;
 
 auto HcAgentConsoleWrite(
@@ -45,12 +80,9 @@ auto HcAgentExecute(
     const bool         wait
 ) -> json;
 
-auto HcAgentRegisterMenuAction(
-    const std::string&  agent_type,
-    const std::string&  name,
-    const std::string&  icon_path,
-    const py11::object& callback
-) -> void;
+//
+// agent profile & generation functions
+//
 
 auto HcAgentProfileBuild(
     const std::string& agent_type,

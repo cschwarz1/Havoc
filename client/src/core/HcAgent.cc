@@ -1,3 +1,4 @@
+#include <csignal>
 #include <Havoc.h>
 #include <core/HcAgent.h>
 
@@ -119,7 +120,7 @@ auto HcAgent::initialize() -> bool {
     }
 
     if ( meta.contains( "last callback" ) && meta[ "last callback" ].is_string() ) {
-        last = QString( meta[ "last callback" ].get<std::string>().c_str() );
+        last = meta[ "last callback" ].get<std::string>();
     } else {
         spdlog::debug( "[HcAgent::parse] agent does not contain valid meta last" );
     }
@@ -136,7 +137,7 @@ auto HcAgent::initialize() -> bool {
         .Arch        = new HcAgentTableItem( arch, this ),
         .System      = new HcAgentTableItem( system, this ),
         .Note        = new HcAgentTableItem( note, this, Qt::NoItemFlags, Qt::AlignVCenter ),
-        .Last        = new HcAgentTableItem( last, this ),
+        .Last        = new HcAgentTableItem( QString::fromStdString( last ), this ),
     };
 
     console = new HcAgentConsole( this );
@@ -152,6 +153,20 @@ auto HcAgent::initialize() -> bool {
         }
     }
 
+    return true;
+}
+
+auto HcAgent::post(
+    void
+) -> void {
+    if ( status == AgentStatus::disconnected ) {
+        disconnected();
+    } else if ( status == AgentStatus::unresponsive ) {
+        unresponsive();
+    } else if ( status == AgentStatus::healthy ) {
+        healthy();
+    }
+
     //
     // if an interface has been registered then assign it to the agent
     //
@@ -160,23 +175,48 @@ auto HcAgent::initialize() -> bool {
         HcPythonAcquire();
 
         try {
-            interface = object.value()( uuid, type, meta );
+            interface = object.value()( uuid, type, data[ "meta" ].get<json>() );
         } catch ( py11::error_already_set &eas ) {
             spdlog::error( "failed to invoke agent interface [uuid: {}] [type: {}]: \n{}", uuid, type, eas.what() );
+
+            emit ui.signal.ConsoleWrite( QString::fromStdString( uuid ), eas.what() );
         }
+
+
+        //
+        // once the interface has been initialized we
+        // can call all registered callbacks that wait
+        // to be notified on newly connected
+        //
+
+        for ( const auto& [init_type, callback] : Havoc->InitializeEvents() ) {
+            spdlog::debug( "init_type: {} ({})", init_type, init_type.empty() );
+
+            if ( !init_type.empty() ) {
+                if ( init_type == type ) {
+                    try {
+                        callback( interface.value() );
+                    } catch ( py11::error_already_set& e ) {
+                        spdlog::error( "failed to execute initialization event callback:\n{}", e.what() );
+                    };
+                };
+            } else {
+                try {
+                    callback( interface.value() );
+                } catch ( py11::error_already_set& e ) {
+                    spdlog::error( "failed to execute initialization event callback:\n{}", e.what() );
+                };
+            };
+        };
     }
 
-    return true;
-}
-
-auto HcAgent::post() -> void
-{
-    if ( status == AgentStatus::disconnected ) {
-        disconnected();
-    } else if ( status == AgentStatus::unresponsive ) {
-        unresponsive();
-    } else if ( status == AgentStatus::healthy ) {
-        healthy();
+    if ( image.isNull() ) {
+        //
+        // if the python object agent interface has not
+        // registered any kind of image or icon for the
+        // agent session then we are going to set unknown
+        //
+        emit ui.signal.RegisterIconName( QString::fromStdString( uuid ), "unknown" );
     }
 }
 

@@ -23,6 +23,13 @@ def HcAgentRegisterMenuAction(
     return _register
 
 
+def HcAgentRegisterInitialize( type: str = '' ):
+    def _register( function ):
+        agent.HcAgentRegisterInitialize( type, function )
+
+    return _register
+
+
 def HcAgentExport( interface ):
 
     globals()[ interface.__name__ ] = interface
@@ -48,6 +55,14 @@ def HcAgentRegisterCallback( uuid, callback ):
 
 def HcAgentUnRegisterCallback( callback ):
     agent.HcAgentUnRegisterCallback( callback )
+
+
+def HcAgentRegisterIconName( uuid, name ):
+    agent.HcAgentRegisterIconName( uuid, name )
+
+
+def HcAgentRegisterIcon( uuid, icon ):
+    agent.HcAgentRegisterIcon( uuid, icon )
 
 
 def HcAgentProfileSelect( agent_type: str = "" ) -> Optional[dict]:

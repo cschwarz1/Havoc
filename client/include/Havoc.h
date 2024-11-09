@@ -90,12 +90,13 @@ private:
     HcWorker<HcHeartbeatWorker> Heartbeat;
     HcWorker<HcMetaWorker>      MetaWorker;
 
-    std::vector<json>          listeners = {};
-    std::vector<NamedObject>   protocols = {};
-    std::vector<NamedObject>   builders  = {};
-    std::vector<NamedObject>   agents    = {};
-    std::vector<NamedObject>   callbacks = {};
-    std::vector<ActionObject*> actions   = {};
+    std::vector<json>          listeners   = {};
+    std::vector<NamedObject>   protocols   = {};
+    std::vector<NamedObject>   builders    = {};
+    std::vector<NamedObject>   agents      = {};
+    std::vector<NamedObject>   callbacks   = {};
+    std::vector<NamedObject>   init_events = {};
+    std::vector<ActionObject*> actions     = {};
 
     QDir client_dir = {};
 
@@ -219,6 +220,7 @@ public:
     //
     // Payload Builder
     //
+
     auto AddBuilder(
         const std::string & name,
         const py11::object& builder
@@ -262,6 +264,19 @@ public:
     auto Actions(
         const ActionObject::ActionType& type
     ) -> std::vector<ActionObject*>;
+
+    //
+    // Agent Initialize Python Event
+    //
+
+    auto AddInitializeEvent(
+        const std::string&  type,
+        const py11::object& object
+    ) -> void;
+
+    auto InitializeEvents(
+        void
+    ) -> std::vector<std::tuple<std::string, py11::object>>;
 
     //
     // Server Api

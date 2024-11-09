@@ -77,7 +77,7 @@ public Q_SLOT:
 
     auto AddAgent(
         const json& metadata
-    ) -> void;
+    ) -> std::optional<HcAgent*>;
 
     auto RemoveAgent(
         const std::string& uuid

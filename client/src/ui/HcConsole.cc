@@ -98,11 +98,10 @@ auto HcConsole::formatString(
 
     for ( auto it = format.begin(); it != end; ++it ) {
         if ( *it == '%' ) {
-            char color = 0;
-            auto prev  = *it;
-            auto spec  = ++it;
-            switch ( * spec ) {
+            const auto prev = *it;
+            const auto spec = ++it;
 
+            switch ( * spec ) {
                 //
                 // upper case characters are certain data inserted
                 //
@@ -114,6 +113,11 @@ auto HcConsole::formatString(
 
                 case 'D': {
                     text += QDateTime::currentDateTime().toString( "dd-MMM-yy" ).toStdString();
+                    break;
+                }
+
+                case 'X': {
+                    text += QDateTime::currentDateTime().toString( "dd-MMM-yy hh:mm:ss t" ).toStdString();
                     break;
                 }
 
