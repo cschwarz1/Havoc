@@ -192,8 +192,13 @@ auto HcApplication::Main(
     //
     // create main window
     //
-    Gui = new HcMainWindow;
-    Gui->setStyleSheet( stylesheet );
+    ui = new HcMainWindow;
+    ui->setStyleSheet( stylesheet );
+
+    //
+    // initialize the plugin manager
+    //
+    plugin_manager = new HcPluginManager;
 
     //
     // setup Python thread
@@ -467,7 +472,7 @@ auto HcApplication::ServerPullPlugins(
     // start the plugin worker of the store to load up all the
     // plugins from the local file system that we just pulled
     //
-    Gui->PageScripts->processPlugins();
+    ui->PageScripts->processPlugins();
 
     splash->showMessage( "process scripts", Qt::AlignLeft | Qt::AlignBottom, Qt::white );
 
@@ -747,10 +752,10 @@ auto HcApplication::SetupThreads(
             spdlog::info( "MetaWorker finished" );
             splash->close();
 
-            Gui->move(
-                QGuiApplication::primaryScreen()->geometry().center() - Gui->rect().center()
+            ui->move(
+                QGuiApplication::primaryScreen()->geometry().center() - ui->rect().center()
             );
-            Gui->renderWindow();
+            ui->renderWindow();
 
             Events.Thread->start();
         } );
@@ -758,9 +763,9 @@ auto HcApplication::SetupThreads(
         //
         // connect methods to add listeners, agents, etc. to the user interface (ui)
         //
-        connect( MetaWorker.Worker, &HcMetaWorker::AddListener,     Gui, &HcMainWindow::AddListener  );
-        connect( MetaWorker.Worker, &HcMetaWorker::AddAgent,        Gui, &HcMainWindow::AddAgent     );
-        connect( MetaWorker.Worker, &HcMetaWorker::AddAgentConsole, Gui, &HcMainWindow::AgentConsole );
+        connect( MetaWorker.Worker, &HcMetaWorker::AddListener,     ui, &HcMainWindow::AddListener  );
+        connect( MetaWorker.Worker, &HcMetaWorker::AddAgent,        ui, &HcMainWindow::AddAgent     );
+        connect( MetaWorker.Worker, &HcMetaWorker::AddAgentConsole, ui, &HcMainWindow::AgentConsole );
     }
 }
 
@@ -804,7 +809,7 @@ auto HcApplication::AddListener(
     spdlog::debug( "listener -> {}", listener.dump() );
     listeners.push_back( listener );
 
-    Gui->PageListener->addListener( listener );
+    ui->PageListener->addListener( listener );
 }
 
 auto HcApplication::RemoveListener(
@@ -829,7 +834,7 @@ auto HcApplication::RemoveListener(
         }
     }
 
-    Gui->PageListener->removeListener( name );
+    ui->PageListener->removeListener( name );
 }
 
 auto HcApplication::ListenerObject(
@@ -862,13 +867,13 @@ auto HcApplication::Listeners() -> std::vector<std::string>
 
 auto HcApplication::Agents() const -> std::vector<HcAgent*>
 {
-    return Gui->PageAgent->agents;
+    return ui->PageAgent->agents;
 }
 
 auto HcApplication::Agent(
     const std::string& uuid
 ) const -> std::optional<HcAgent*> {
-    return Gui->PageAgent->Agent( uuid );
+    return ui->PageAgent->Agent( uuid );
 }
 
 auto HcApplication::AddAgentObject(
@@ -1065,7 +1070,7 @@ auto HcApplication::InitializeEvents(
 auto HcApplication::ScriptLoad(
     const std::string& path
 ) const -> void {
-    Gui->PageScripts->LoadScript( path );
+    ui->PageScripts->LoadScript( path );
 }
 
 auto HcApplication::ScriptConfigProcess(

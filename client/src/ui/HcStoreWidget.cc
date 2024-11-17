@@ -196,7 +196,7 @@ HcStoreWidget::HcStoreWidget( QWidget* parent ) : QWidget( parent ) {
         const std::string& title,
         const std::string& content
     ) {
-        Havoc->Gui->MessageBox( icon, title, content );
+        Havoc->ui->MessageBox( icon, title, content );
     } );
 
     connect( PluginWorker.Worker, &HcStorePluginWorker::PluginIsInstalling, this, [&]( PluginView* plugin ) {
@@ -220,7 +220,7 @@ HcStoreWidget::HcStoreWidget( QWidget* parent ) : QWidget( parent ) {
             if ( script.exists() ) {
                 try {
                     HcPythonAcquire();
-                    Havoc->Gui->PageScripts->LoadScript( script.fileName().toStdString() );
+                    Havoc->ui->PageScripts->LoadScript( script.fileName().toStdString() );
                 } catch ( py11::error_already_set &eas ) {
                     Helper::MessageBox( QMessageBox::Critical, "plugin installation", std::format( "failed while loading {} plugin scripts:\n{}", plugin->name, eas.what() ) );
                     spdlog::error( "plugin error while loading {} python scripts:\n{}", plugin->name, eas.what() );

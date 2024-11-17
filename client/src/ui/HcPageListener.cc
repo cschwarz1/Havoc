@@ -509,7 +509,7 @@ auto HcPageListener::handleListenerContextMenu(
                         try {
                             HcPythonAcquire();
 
-                            listener_action->callback( name.toStdString() );
+                            listener_action->callback_py( name.toStdString() );
                         } catch ( py11::error_already_set& e ) {
                             spdlog::error( "failed to execute action callback: {}", e.what() );
                         }

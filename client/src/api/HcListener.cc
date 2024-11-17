@@ -6,7 +6,7 @@ auto HcListenerProtocolData(
     const std::string& protocol
 ) -> json {
 
-    for ( auto& p : Havoc->Gui->PageListener->Protocols ) {
+    for ( auto& p : Havoc->ui->PageListener->Protocols ) {
         if ( p.contains( "data" ) ) {
             if ( p[ "data" ].contains( "protocol" ) ) {
                 if ( p[ "data" ][ "protocol" ] == protocol ) {
@@ -52,7 +52,7 @@ auto HcListenerRegisterMenuAction(
     action->type          = HcApplication::ActionObject::ActionListener;
     action->name          = name;
     action->icon          = icon;
-    action->callback      = callback;
+    action->callback_py   = callback;
     action->listener.type = type;
 
     Havoc->AddAction( action );

@@ -23,11 +23,11 @@ class Hover : public QObject
 
 public:
     bool eventFilter( QObject* watched, QEvent* event ) override {
-        handleButtonSideEvent( "connection", Havoc->Gui->ButtonAgents,    watched, event );
-        handleButtonSideEvent( "listener",   Havoc->Gui->ButtonListeners, watched, event );
-        handleButtonSideEvent( "hosting",    Havoc->Gui->ButtonServer,    watched, event );
-        handleButtonSideEvent( "script",     Havoc->Gui->ButtonScripts,   watched, event );
-        handleButtonSideEvent( "settings",   Havoc->Gui->ButtonSettings,  watched, event );
+        handleButtonSideEvent( "connection", Havoc->ui->ButtonAgents,    watched, event );
+        handleButtonSideEvent( "listener",   Havoc->ui->ButtonListeners, watched, event );
+        handleButtonSideEvent( "hosting",    Havoc->ui->ButtonServer,    watched, event );
+        handleButtonSideEvent( "script",     Havoc->ui->ButtonScripts,   watched, event );
+        handleButtonSideEvent( "settings",   Havoc->ui->ButtonSettings,  watched, event );
 
         return false;
     }

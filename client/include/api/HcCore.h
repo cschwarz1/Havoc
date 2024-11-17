@@ -12,4 +12,8 @@ auto HcRegisterMenuAction(
     const py11::object& callback
 ) -> void;
 
+auto HcPluginRegister(
+    const std::string& plugin_path
+) -> void;
+
 #endif //HAVOCCLIENT_API_HCCORE_H

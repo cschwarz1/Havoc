@@ -195,6 +195,8 @@ auto HcPageAgent::addTab(
         ads::CDockWidget::DockWidgetClosable
     );
 
+    // DockManager->addDockWidget( ads::TopDockWidgetArea, tab );
+
     DockManager->addDockWidgetTabToArea( tab, ConsoleAreaWidget );
 }
 
@@ -273,7 +275,6 @@ auto HcPageAgent::handleAgentMenu(
     auto uuid          = std::string();
     auto type          = std::string();
     auto agent         = std::optional<HcAgent*>();
-    auto item          = static_cast<QTableWidgetItem*>( nullptr );
     auto selections    = AgentTable->selectionModel()->selectedRows();
     auto agent_actions = Havoc->Actions( HcApplication::ActionObject::ActionAgent );
     auto remove        = std::vector<HcAgent*>();
@@ -360,12 +361,18 @@ auto HcPageAgent::handleAgentMenu(
                          _action->agent.type == type
                     ) {
                         if ( agent.has_value() && agent.value()->interface.has_value() ) {
-                            try {
-                                HcPythonAcquire();
+                            if ( _action->callback ) {
+                                reinterpret_cast<HcFnCallbackCtx<std::string>>( _action->callback )(
+                                    agent.value()->uuid
+                                );
+                            } else {
+                                try {
+                                    HcPythonAcquire();
 
-                                _action->callback( agent.value()->interface.value() );
-                            } catch ( py11::error_already_set& e ) {
-                                spdlog::error( "failed to execute action callback: {}", e.what() );
+                                    _action->callback_py( agent.value()->interface.value() );
+                                } catch ( py11::error_already_set& e ) {
+                                    spdlog::error( "failed to execute action callback: {}", e.what() );
+                                }
                             }
                         }
                         return;
@@ -477,7 +484,7 @@ auto HcPageAgent::actionPayloadBuilder(
 
     auto dialog = HcPayloadBuild();
 
-    connect( Havoc->Gui, &HcMainWindow::signalBuildLog, &dialog, &HcPayloadBuild::EventBuildLog );
+    connect( Havoc->ui, &HcMainWindow::signalBuildLog, &dialog, &HcPayloadBuild::EventBuildLog );
 
     //
     // if there was an error while loading or executing
@@ -526,7 +533,7 @@ auto HcPageAgent::actionTriggered(
             try {
                 HcPythonAcquire();
 
-                action->callback();
+                action->callback_py().cast<void>();
             } catch ( py11::error_already_set& e ) {
                 spdlog::error( "failed to execute action callback: {}", e.what() );
             }

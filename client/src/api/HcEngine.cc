@@ -23,7 +23,7 @@ PYBIND11_EMBEDDED_MODULE( _pyhavoc, m ) {
         core.def( "HcIoScriptLoadCallback", HcIoScriptLoadCallback, py::call_guard<py::gil_scoped_release>() );
 
         //
-        // Havoc Server api functions
+        // Havoc server api functions
         //
         core.def( "HcServerApiSend", HcServerApiSend, py::call_guard<py::gil_scoped_release>() );
 
@@ -33,12 +33,17 @@ PYBIND11_EMBEDDED_MODULE( _pyhavoc, m ) {
         core.def( "HcRegisterMenuAction", HcRegisterMenuAction );
 
         //
-        // Havoc Listener api functions
+        // Havoc listener api functions
         //
         core.def( "HcListenerProtocolData",       HcListenerProtocolData );
         core.def( "HcListenerAll",                HcListenerAll );
         core.def( "HcListenerQueryType",          HcListenerQueryType );
         core.def( "HcListenerRegisterMenuAction", HcListenerRegisterMenuAction );
+
+        //
+        // Havoc plugin api functions
+        //
+        core.def( "HcPluginRegister", HcPluginRegister );
     }
 
     //
@@ -53,10 +58,6 @@ PYBIND11_EMBEDDED_MODULE( _pyhavoc, m ) {
         //
         // Havoc Ui functions and utilities
         //
-        ui.def( "HcUiListenerObjName", []() -> py11::str {
-            return ( "HcListenerDialog.StackedProtocols" );
-        } );
-
         ui.def( "HcUiListenerRegisterView", [](
             const std::string&  name,
             const py11::object& object

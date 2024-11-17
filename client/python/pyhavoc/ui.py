@@ -134,14 +134,6 @@ class HcListenerView:
         pass
 
 
-def HcUiPayloadBuilderObjName() -> str:
-    return ui.HcUiPayloadBuilderObjName()
-
-
-def HcUiListenerObjName() -> str:
-    return ui.HcUiListenerObjName()
-
-
 def HcUiGetStyleSheet() -> str:
     return ui.HcUiGetStyleSheet()
 

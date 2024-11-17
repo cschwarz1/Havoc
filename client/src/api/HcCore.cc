@@ -30,16 +30,22 @@ auto HcRegisterMenuAction(
 ) -> void {
     auto action = new HcApplication::ActionObject();
 
-    action->type = HcApplication::ActionObject::ActionHavoc;
-    action->name = name;
-    action->icon = icon_path;
-    action->callback = callback;
+    action->type        = HcApplication::ActionObject::ActionHavoc;
+    action->name        = name;
+    action->icon        = icon_path;
+    action->callback_py = callback;
 
     Havoc->AddAction( action );
 
     if ( icon_path.empty() ) {
-        Havoc->Gui->PageAgent->AgentActionMenu->addAction( name.c_str() );
+        Havoc->ui->PageAgent->AgentActionMenu->addAction( name.c_str() );
     } else {
-        Havoc->Gui->PageAgent->AgentActionMenu->addAction( QIcon( icon_path.c_str() ), name.c_str() );
+        Havoc->ui->PageAgent->AgentActionMenu->addAction( QIcon( icon_path.c_str() ), name.c_str() );
     }
+}
+
+auto HcPluginRegister(
+    const std::string& plugin_path
+) -> void {
+    Havoc->plugin_manager->loadPlugin( plugin_path );
 }

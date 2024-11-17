@@ -44,7 +44,7 @@ auto HcApplication::eventDispatch(
             return;
         }
 
-        Gui->PageListener->Protocols.push_back( data );
+        ui->PageListener->Protocols.push_back( data );
     }
     else if ( type == Event::listener::start )
     {
@@ -56,7 +56,7 @@ auto HcApplication::eventDispatch(
             return;
         }
 
-        Gui->AddListener( data );
+        ui->AddListener( data );
     }
     else if ( type == Event::listener::stop )
     {
@@ -92,7 +92,7 @@ auto HcApplication::eventDispatch(
             return;
         }
 
-        Gui->PageListener->setListenerStatus( name, status );
+        ui->PageListener->setListenerStatus( name, status );
     }
     else if ( type == Event::listener::status )
     {
@@ -128,7 +128,7 @@ auto HcApplication::eventDispatch(
             return;
         }
 
-        Gui->PageListener->setListenerStatus( name, log );
+        ui->PageListener->setListenerStatus( name, log );
     }
     else if ( type == Event::listener::log )
     {
@@ -164,7 +164,7 @@ auto HcApplication::eventDispatch(
             return;
         }
 
-        Gui->PageListener->addListenerLog( name, log );
+        ui->PageListener->addListenerLog( name, log );
     }
     else if ( type == Event::listener::remove )
     {
@@ -202,7 +202,7 @@ auto HcApplication::eventDispatch(
             return;
         }
 
-        Gui->AddAgent( data );
+        ui->AddAgent( data );
     }
     else if ( type == Event::agent::callback )
     {
@@ -302,7 +302,7 @@ auto HcApplication::eventDispatch(
             // check if we found the agent and if it contains
             // a python interface
             //
-            auto agent = Havoc->Gui->PageAgent->Agent( uuid );
+            auto agent = Havoc->ui->PageAgent->Agent( uuid );
             if ( agent.has_value() && agent.value()->interface.has_value() ) {
                 pat = QByteArray::fromBase64( out.c_str() ).toStdString();
 
@@ -340,7 +340,7 @@ auto HcApplication::eventDispatch(
     }
     else if ( type == Event::agent::console )
     {
-        Gui->AgentConsole( data );
+        ui->AgentConsole( data );
     }
     else if ( type == Event::agent::heartbeat )
     {
@@ -464,7 +464,7 @@ auto HcApplication::eventDispatch(
             return;
         }
 
-        Gui->RemoveAgent( uuid );
+        ui->RemoveAgent( uuid );
     }
     else if ( type == Event::agent::buildlog )
     {
@@ -482,7 +482,7 @@ auto HcApplication::eventDispatch(
                 //
                 // signal opened dialog of the build message
                 //
-                emit Gui->signalBuildLog( log.c_str() );
+                emit ui->signalBuildLog( log.c_str() );
             } else {
                 spdlog::error( "invalid agent build log: \"log\" is not string" );
                 return;

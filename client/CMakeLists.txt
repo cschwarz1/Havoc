@@ -15,6 +15,7 @@ set( QT_VERSION_MAJOR 6 )
 ##
 ## build parameter
 ##
+
 set( QT_VERSION 6 )
 set( PYTHON_VERSION 3 )
 set( REQUIRED_LIBS Core Gui Widgets Network WebSockets Designer Core5Compat )
@@ -24,17 +25,21 @@ set( APP_ICON_RESOURCE_WINDOWS "data/Havoc.qrc" )
 ##
 ## compiler definition
 ##
+
 add_definitions( -DQT_NO_DEBUG_OUTPUT )
 
 ##
 ## compiler flags
 ##
+
 set( CMAKE_CXX_FLAGS "-Wattributes -fvisibility-inlines-hidden -lssl -lcrypto" )
 
 ##
 ## include header directories
 ##
+
 include_directories( include )
+include_directories( interface )
 include_directories( extern/pybind11_json/include )
 include_directories( extern/json/include )
 include_directories( extern/spdlog/include )
@@ -44,7 +49,7 @@ include_directories( extern/Qt-Advanced-Docking-System/src )
 ##
 ## packages
 ##
-find_package( OpenSSL REQUIRED )
+
 find_package( Python ${PYTHON_VERSION} COMPONENTS Interpreter Development REQUIRED )
 find_package( Qt${QT_VERSION} COMPONENTS ${REQUIRED_LIBS} REQUIRED )
 
@@ -55,6 +60,13 @@ link_directories( ${Python_LIBRARY_DIRS} )
 ##
 add_subdirectory( extern/pybind11 )
 add_subdirectory( extern/Qt-Advanced-Docking-System )
+
+set( HAVOC_INTERFACE
+        interface/IHcApplication.h
+
+        interface/IHcPlugin.h
+        interface/IHcPluginAgentView.h
+)
 
 ##
 ## Havoc include
@@ -70,6 +82,7 @@ set( HAVOC_INCLUDE
         include/core/HcHeartbeatWorker.h
         include/core/HcStorePluginWorker.h
         include/core/HcMetaWorker.h
+        include/core/HcPluginManager.h
 
         include/api/Engine.h
         include/api/HcCore.h
@@ -100,8 +113,9 @@ set( HAVOC_INCLUDE
 ##
 set( HAVOC_SRC
         src/Main.cc
-        src/Havoc.cc
-        src/Events.cc
+
+        src/HcApplication.cc
+        src/HcEvents.cc
 
         src/core/HcHelper.cc
         src/core/HcEventWorker.cc
@@ -109,6 +123,7 @@ set( HAVOC_SRC
         src/core/HcHeartbeatWorker.cc
         src/core/HcStorePluginWorker.cc
         src/core/HcMetaWorker.cc
+        src/core/HcPluginManager.cc
 
         src/ui/HcConnectDialog.cc
         src/ui/HcMainWindow.cc
@@ -137,17 +152,16 @@ set( HAVOC_SRC
 ##
 ## build the executable
 ##
-add_executable( ${BINARY_NAME} ${HAVOC_INCLUDE} ${HAVOC_SRC} ${APP_ICON_RESOURCE_WINDOWS} )
 
+add_executable( ${BINARY_NAME} ${HAVOC_INCLUDE} ${HAVOC_INTERFACE} ${HAVOC_SRC} ${APP_ICON_RESOURCE_WINDOWS} )
 
 ##
 ## linking external libraries
 ##
+
 target_link_libraries( ${BINARY_NAME} PRIVATE
         ${REQUIRED_LIBS_QUALIFIED}
         ${Python_LIBRARIES}
-        OpenSSL::SSL
-        OpenSSL::Crypto
         pybind11::embed
         ads::qt6advanceddocking
 )

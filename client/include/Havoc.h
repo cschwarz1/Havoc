@@ -11,6 +11,7 @@ class HcMainWindow;
 #include <core/HcEventWorker.h>
 #include <core/HcHeartbeatWorker.h>
 #include <core/HcMetaWorker.h>
+#include <core/HcPluginManager.h>
 
 #include <ui/HcPageAgent.h>
 #include <ui/HcPageListener.h>
@@ -69,7 +70,9 @@ public:
 
         std::string  name;
         std::string  icon;
-        py11::object callback;
+
+        HcFnCallbackCtx<void*> callback;
+        py11::object           callback_py;
     };
 
 private:
@@ -101,9 +104,10 @@ private:
     QDir client_dir = {};
 
 public:
-    HcMainWindow*  Gui    = {};
-    QSplashScreen* splash = {};
-    HcTheme        Theme;
+    HcPluginManager* plugin_manager = {};
+    HcMainWindow*    ui             = {};
+    QSplashScreen*   splash         = {};
+    HcTheme          Theme;
 
     //
     // toml based profiles

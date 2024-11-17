@@ -6,6 +6,10 @@ import threading
 from _pyhavoc import core
 
 
+def HcPluginRegister( plugin_path: str ):
+    return core.HcPluginRegister( plugin_path )
+
+
 def HcListenerProtocolData(
     protocol: str
 ) -> dict:

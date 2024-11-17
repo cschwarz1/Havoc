@@ -518,7 +518,7 @@ auto HcSessionGraphScene::contextMenuEvent(
                 spdlog::debug( "session uuid: {}", session->agent()->uuid );
 
                 if ( action->text().compare( "Interact" ) == 0 ) {
-                    Havoc->Gui->PageAgent->spawnAgentConsole( session->agent()->uuid );
+                    Havoc->ui->PageAgent->spawnAgentConsole( session->agent()->uuid );
                 } else if ( action->text().compare( "Remove" ) == 0 ) {
                     session->agent()->remove();
                 } else if ( action->text().compare( "Hide" ) == 0 ) {
@@ -532,12 +532,18 @@ auto HcSessionGraphScene::contextMenuEvent(
                             if ( agent.has_value() &&
                                  agent.value()->interface.has_value()
                             ) {
-                                try {
-                                    HcPythonAcquire();
+                                if ( agent_action->callback ) {
+                                    reinterpret_cast<HcFnCallbackCtx<std::string>>( agent_action->callback )(
+                                        agent.value()->uuid
+                                    );
+                                } else {
+                                    try {
+                                        HcPythonAcquire();
 
-                                    agent_action->callback( agent.value()->interface.value() );
-                                } catch ( py11::error_already_set& e ) {
-                                    spdlog::error( "failed to execute action callback: {}", e.what() );
+                                        agent_action->callback_py( agent.value()->interface.value() );
+                                    } catch ( py11::error_already_set& e ) {
+                                        spdlog::error( "failed to execute action callback: {}", e.what() );
+                                    }
                                 }
                             }
                             return;

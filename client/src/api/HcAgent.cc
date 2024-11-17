@@ -1,6 +1,8 @@
 #include <Havoc.h>
 #include <api/HcAgent.h>
 
+#include <IHcPlugin.h>
+
 /*!
  * @brief
  *  register an agent interface to the havoc client
@@ -269,11 +271,11 @@ auto HcAgentRegisterMenuAction(
 ) -> void {
     auto action = new HcApplication::ActionObject();
 
-    action->type       = HcApplication::ActionObject::ActionAgent;
-    action->name       = name;
-    action->icon       = icon_path;
-    action->callback   = callback;
-    action->agent.type = agent_type;
+    action->type        = HcApplication::ActionObject::ActionAgent;
+    action->name        = name;
+    action->icon        = icon_path;
+    action->callback_py = callback;
+    action->agent.type  = agent_type;
 
     spdlog::debug( "HcAgentRegisterMenuAction( {}, {}, {} )", agent_type, name, icon_path );
 
