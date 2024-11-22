@@ -398,11 +398,14 @@ auto HcStoreWidget::AddPlugin(
     //
     // NOTE: forcefully trigger an loadResource call to
     //       retrieve and load the resources (images, etc.)
-    //       from the external servers
+    //       from the external servers and repaint the UI
     //
+
     auto pixmap  = QPixmap( 1, 1 );
     auto painter = QPainter( &pixmap );
     plugin->TextReadme->render( &painter );
+
+    Havoc->ui->repaint();
 
     //
     // add plugin object to the vector array and to the stack widget

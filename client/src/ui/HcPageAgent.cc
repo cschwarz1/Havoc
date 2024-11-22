@@ -70,6 +70,7 @@ HcPageAgent::HcPageAgent(
     AgentTable->setContextMenuPolicy( Qt::CustomContextMenu );
     AgentTable->horizontalHeader()->setSectionResizeMode( QHeaderView::ResizeMode::Stretch );
     AgentTable->horizontalHeader()->setStretchLastSection( true );
+    AgentTable->horizontalHeader()->setHighlightSections( false );
     AgentTable->verticalHeader()->setVisible( false );
     AgentTable->setFocusPolicy( Qt::NoFocus );
     AgentTable->setAlternatingRowColors( true );

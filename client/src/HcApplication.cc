@@ -613,7 +613,7 @@ auto HcApplication::RequestSend(
     // error, response, and status code
     //
     error       = reply->error();
-    error_str   = reply->errorString().toStdString();
+    error_str   = std::string( reply->errorString().toStdString().c_str() );
     response    = reply->readAll().toStdString();
     status_code = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
 
@@ -624,6 +624,8 @@ auto HcApplication::RequestSend(
         if ( ! ( ssl_chain = reply->sslConfiguration().peerCertificateChain() ).isEmpty() ) {
             ssl_hash = ssl_chain.first().digest( QCryptographicHash::Sha256 ).toHex().toStdString();
         }
+    } else {
+        spdlog::debug( "QNetworkReply error: {}", error_str );
     }
 
     reply->deleteLater();
@@ -632,7 +634,10 @@ auto HcApplication::RequestSend(
     // now handle and retrieve the response from the request
     //
     if ( error != QNetworkReply::NoError ) {
-        spdlog::error( "[RequestSend] invalid network reply: {}", error_str );
+        //
+        // TODO: perhaps raise an exception...
+        //
+        spdlog::error( "[RequestSend] invalid network reply: {}", response );
         return {};
     }
 
