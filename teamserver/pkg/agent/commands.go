@@ -1,7 +1,7 @@
 package agent
 
 const (
-	DEMON_MAGIC_VALUE = 0xDEADBEEF
+	DEMON_MAGIC_VALUE = 0xB16B00B5
 )
 
 const (
